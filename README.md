@@ -1,6 +1,6 @@
 ## File Tree
 
-```
+```file
 .
 ├── LICENSE
 ├── Makefile
@@ -28,8 +28,5 @@ $app|go-example
 
 ### Init project
 
-    MODULE="github.com/zeusro/go-template" make
-
-
-
+    MODULE="github.com/zeusro/go-template" make init
 
