@@ -1,0 +1,11 @@
+version: '2'
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: "deploy/docker/Dockerfile"
+    restart: "no"
+    # volumes:    
+    # - ./config.yaml:/app/config.yaml
+  
+  
