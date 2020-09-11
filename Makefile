@@ -2,8 +2,9 @@ now 		  := $(shell date)
 PREFIX		  ?= zeusro
 APP_NAME      ?= $app:latest
 IMAGE		  ?= $(PREFIX)/$(APP_NAME)
-MIRROR_IMAGE  ?= registry.cn-shenzhen.aliyuncs.com/amiba/$app:latest
-ARCH		  ?=amd64
+MIRROR_IMAGE  ?= registry.cn-shenzhen.aliyuncs.com/mirror/$app:latest
+MODULE		  ?= $org/$project-name
+ARCH		  ?= amd64
 
 auto_commit:   
 	git add .
@@ -12,19 +13,19 @@ auto_commit:
 
 buildAndRun:
 	GOARCH=$(ARCH) CGO_ENABLED=0 go build
-	./common-bandwidth-auto-switch
+	# ./$app
 
 fix-dep:
 	go mod tidy
 	go mod vendor
 
-# usage dep="github.com/stretchr/testify/assert" make get
+# usage: dep="github.com/stretchr/testify/assert" make get
 get:
 	go get -u -v $(dep)
 	go mod tidy && go mod verify && go mod vendor
 
 init:
-	go mod init 
+	go mod init $(MODULE)
 
 mirror: pull
 	docker build -t $(MIRROR_IMAGE) -f deploy/docker/Dockerfile .

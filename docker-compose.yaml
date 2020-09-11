@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: "deploy/docker/Dockerfile"
     restart: "no"
-    # volumes:    
-    # - ./config.yaml:/app/config.yaml
+    volumes:    
+    - ./config.yaml:/app/config.yaml
   
   
