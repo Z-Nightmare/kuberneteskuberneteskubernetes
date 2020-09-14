@@ -18,6 +18,8 @@
 
 ## Init
 
+Fork and then rename the project.
+
 ### Replace variable as you want
 
 variable | example
