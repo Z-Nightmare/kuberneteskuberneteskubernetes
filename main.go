@@ -31,7 +31,8 @@ func init() {
 func main() {
 	fmt.Println(LINE)
 	fmt.Print("Power by")
-	fmt.Println(myName)
+	log.Info().Msgf("%s", myName)
+	// fmt.Println(myName)
 	fmt.Println(LINE)
 	setMaxProcs()
 
