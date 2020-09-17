@@ -30,6 +30,9 @@ $app|go-example
 
 ### Init project
 
-    MODULE="github.com/zeusro/go-template" make init
-    make fix-dep
+```bash
+MODULE="github.com/zeusro/go-template" make init
+make fix-dep
+git remote set-url --push $url
+```
     
