@@ -25,7 +25,14 @@ get:
 	go mod tidy && go mod verify && go mod vendor
 
 init:
-	go mod init $(MODULE)
+	@if [ -z "$(project)" ]; then \
+		echo "❌ 请先设置 project 环境变量，例如：make init project=dir-monitor"; \
+		exit 1; \
+	else \
+		echo "✅ 初始化 Go 项目：$(project)"; \
+		go mod init $(project); \
+		go mod tidy; \
+	fi
 
 mirror: pull
 	docker build -t $(MIRROR_IMAGE) -f deploy/docker/Dockerfile .
