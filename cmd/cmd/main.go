@@ -27,7 +27,7 @@ func LoggerWithTraceID() gin.HandlerFunc {
 
 		// 记录日志
 		duration := time.Since(start)
-		log.Printf("[TraceID:%s] %s %s %d %s",
+		log.Printf("[traceid:%s] %s %s %d %s",
 			traceID,
 			c.Request.Method,
 			c.Request.URL.Path,
