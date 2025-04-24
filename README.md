@@ -1,3 +1,13 @@
+## 介绍
+
+`幸福的人生总是类似 悲剧的家庭却各有不同`。
+
+![img](docs/png-clipart-gundam-head-illustration-zgmf-x10a-freedom-gundam-drawing-zgmf-x20a-strike-freedom-line-art-seeds-miscellaneous-symmetry.png)
+
+好的设计，就像高达，你从头部设计的细节就知道成品质量会怎么样
+
+![img](docs/967ab04f4a947db97b22c2cd6ffb24b7.jpg)
+
 ## 核心概念
 
 ### Module
@@ -60,3 +70,4 @@ func (p People) Bullshit() string {
 #### Cloud Function
 
 云端函数脱离了本地环境，需要比较大的计算资源，所以叫云端函数。
+
