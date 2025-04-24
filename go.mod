@@ -1,11 +1,7 @@
 module zeusro.com/gotemplate
 
 //为了方便调试而降低版本
-go 1.23.0
-
-toolchain go1.24.2
-
-replace github.com/gin-gonic/gin v1.10.0 => github.com/gin-gonic/gin v1.9.1
+go 1.24
 
 require (
 	github.com/gin-contrib/zap v1.1.5

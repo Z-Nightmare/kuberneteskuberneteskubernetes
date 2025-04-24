@@ -31,7 +31,7 @@ type People interface {
 
 ```
 
-如果是我以前那个java同事，他估计会这样写：
+如果是以前那些 java 没学好的同事，估计会这样写：
 
 ```go
 func (p Teacher) Bullshit() string {
@@ -47,14 +47,16 @@ func (p Boss) Bullshit() string {
 }
 ```
 
-老师放屁，同事放屁，老板放屁等 Module 实现 ，属于过度设计。
-因为这类行为的本质都是凡人在放屁。其实对我来讲就只有一个:
+他们给我的感觉就好像“我已经把屎拉好了，他们还在封装纸尿裤”。
+这类行为的本质都是凡人在放屁。其实对我来讲就只有一个:
 
 ```go
 func (p People) Bullshit() string {
 	return p.Thought
 }
 ```
+
+如果你封装能力真的好，甚至不用定义 interface ，也能让所有实现符合完全一致的范式。
 
 ### Function
 

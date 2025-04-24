@@ -52,6 +52,8 @@ func NewFileConfig() Config {
 	viper.SetConfigFile(configPath)
 
 	if err := viper.ReadInConfig(); err != nil {
+		// exePath, _ := os.Executable()
+		// log.Printf("当前执行文件路径: %s", exePath)
 		log.Fatalln("无法读取配置文件: ", err.Error())
 	}
 

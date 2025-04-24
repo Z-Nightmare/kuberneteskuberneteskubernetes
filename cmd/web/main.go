@@ -16,7 +16,6 @@ import (
 	"zeusro.com/gotemplate/internal/core/config"
 	"zeusro.com/gotemplate/internal/core/logprovider"
 	"zeusro.com/gotemplate/internal/core/webprovider"
-	"zeusro.com/gotemplate/internal/middleware"
 	"zeusro.com/gotemplate/internal/service"
 )
 
@@ -24,19 +23,17 @@ func main() {
 	modules := fx.Options(
 		core.CoreModule,
 		// model.Module,
-		middleware.Module,
+		// middleware.Module,
 		// repository.Module,
 		service.Modules,
 		api.Modules)
-	fmt.Println("-1111111111111-")
+	logger := logprovider.GetLogger()
 	app := fx.New(modules,
 		fx.WithLogger(func() fxevent.Logger {
-			logger := logprovider.GetLogger()
 			return logger.GetFxLogger()
 		}),
 		fx.Invoke(StartGinServer))
 	app.Run()
-	logger := logprovider.GetLogger()
 	GracefulShutdown(logger, func() {
 		fmt.Println("清理资源...")
 		// 这里可以添加清理逻辑，比如关闭数据库连接、释放资源等
@@ -95,12 +92,12 @@ func StartGinServer(
 	gin webprovider.MyGinEngine,
 	l logprovider.Logger,
 	// model model.Models,
-	middlewares middleware.Middlewares,
+	// middlewares middleware.Middlewares
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			// model.AutoMigrate()
-			middlewares.SetUp()
+			// middlewares.SetUp()
 			router.SetUp()
 
 			go func() {
