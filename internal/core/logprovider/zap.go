@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"go.uber.org/fx/fxevent"
@@ -36,10 +37,19 @@ var (
 	zapLogger    *zap.Logger
 )
 
+// 仅用于极少数场景，请勿随意使用
+func GetZapLogger() *zap.Logger {
+	return zapLogger
+}
+
+var once sync.Once
+
 func GetLogger() Logger {
 	if globalLogger == nil {
-		logger := newLogger(config.NewFileConfig())
-		globalLogger = &logger
+		once.Do(func() {
+			logger := newLogger(config.NewFileConfig())
+			globalLogger = &logger
+		})
 	}
 	return *globalLogger
 }

@@ -14,11 +14,12 @@ func (r Routes) SetUp() {
 	}
 }
 
-func NewRoutes(healthRoutes HealthRoutes) Routes {
+func NewRoutes(indexRoutes IndexRoutes) Routes {
 	return Routes{
-		healthRoutes,
+		indexRoutes,
 	}
 }
 
 var Modules = fx.Options(
-	fx.Provide(NewHealthRoutes))
+	fx.Provide(NewIndexRoutes),
+	fx.Provide(NewRoutes))

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"zeusro.com/gotemplate/internal/core/config"
+	"zeusro.com/gotemplate/internal/core/logprovider"
 	"zeusro.com/gotemplate/internal/middleware"
 )
 
@@ -21,7 +22,7 @@ type MyGinEngine struct {
 	Api *gin.RouterGroup
 }
 
-func NewGinEngine(config config.Config, zapLogger *zap.Logger) MyGinEngine {
+func NewGinEngine(config config.Config) MyGinEngine {
 	if config.Debug {
 		gin.SetMode(gin.DebugMode)
 	} else {
@@ -29,6 +30,7 @@ func NewGinEngine(config config.Config, zapLogger *zap.Logger) MyGinEngine {
 	}
 	engine := gin.New()
 	//todo 按需按配置加载中间件
+	zapLogger := logprovider.GetZapLogger()
 	engine.Use(middleware.TraceIDMiddleware(zapLogger))
 	engine.Use(ginzap.Ginzap(zapLogger, time.RFC3339, true))
 	// engine.Use(ginzap.RecoveryWithZap(zapLogger, true))

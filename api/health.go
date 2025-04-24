@@ -6,25 +6,30 @@ import (
 	"zeusro.com/gotemplate/internal/service"
 )
 
-type HealthRoutes struct {
+type IndexRoutes struct {
 	logger logprovider.Logger
 	gin    webprovider.MyGinEngine
 	s      service.HealthService
 	// m middleware.JWTMiddleware
 }
 
-func NewHealthRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine) HealthRoutes {
-	return HealthRoutes{
+func NewIndexRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine, s service.HealthService) IndexRoutes {
+	return IndexRoutes{
 		logger: logger,
 		gin:    gin,
+		s:      s,
 	}
 }
 
-func (r HealthRoutes) SetUp() {
-	admin := r.gin.Api.Group("/").Use()
-	{
-		admin.Any("health", r.s.Check)
-		admin.Any("healthz", r.s.Check)
+func (r IndexRoutes) SetUp() {
+	r.gin.Gin.StaticFile("/", "./static/index.html")
 
+	// 在主 engine 上注册路由组
+	index := r.gin.Gin.Group("/")
+	{
+		//http://localhost:8080/health
+		index.Any("health", r.s.Check)
+		index.Any("healthz", r.s.Check)
 	}
+
 }

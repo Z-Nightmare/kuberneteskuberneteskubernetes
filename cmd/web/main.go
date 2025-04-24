@@ -27,14 +27,25 @@ func main() {
 		// repository.Module,
 		service.Modules,
 		api.Modules)
-	logger := logprovider.GetLogger()
 	app := fx.New(modules,
 		fx.WithLogger(func() fxevent.Logger {
+			logger := logprovider.GetLogger()
 			return logger.GetFxLogger()
 		}),
 		fx.Invoke(StartGinServer))
-	app.Run()
-	GracefulShutdown(logger, func() {
+	// app.Run()
+	if err := app.Start(context.Background()); err != nil {
+		// logger.Panic("Fx 启动失败: ", err)
+		fmt.Println("Fx 启动失败: ", err)
+	}
+	defer func() {
+		if err := app.Stop(context.Background()); err != nil {
+			// logger.Error("Fx 停止失败: ", err)
+			fmt.Println("Fx 停止失败: ", err)
+		}
+	}()
+
+	GracefulShutdown(func() {
 		fmt.Println("清理资源...")
 		// 这里可以添加清理逻辑，比如关闭数据库连接、释放资源等
 	})
@@ -42,7 +53,7 @@ func main() {
 }
 
 // GracefulShutdown 封装优雅停机逻辑
-func GracefulShutdown(logger logprovider.Logger, cleanupFuncs ...func()) {
+func GracefulShutdown(cleanupFuncs ...func()) {
 	quit := make(chan os.Signal, 1)
 	/*	syscall.SIGINT（Ctrl+C）
 		syscall.SIGTERM（容器 stop / kill）
@@ -50,9 +61,9 @@ func GracefulShutdown(logger logprovider.Logger, cleanupFuncs ...func()) {
 		syscall.SIGHUP（reload 热重启）
 	*/
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	sig := <-quit // 阻塞主线程
+	<-quit // 阻塞主线程
 
-	logger.Infof("收到中断信号%v，开始优雅关闭... ", sig)
+	// logger.Infof("收到中断信号%v，开始优雅关闭... ", sig)
 
 	// 开始优雅退出流程（如清理资源）
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -68,9 +79,9 @@ func GracefulShutdown(logger logprovider.Logger, cleanupFuncs ...func()) {
 			cleanFn()
 			select {
 			case <-ctx.Done():
-				logger.Infof("清理任务 %d 超时/取消", i+1)
+				fmt.Printf("清理任务 %d 超时/取消\n", i+1)
 			default:
-				logger.Infof("清理任务 %d 完成", i+1)
+				fmt.Printf("清理任务 %d 完成", i+1)
 			}
 		})
 	}
@@ -99,11 +110,12 @@ func StartGinServer(
 			// model.AutoMigrate()
 			// middlewares.SetUp()
 			router.SetUp()
-
 			go func() {
+				l.Info("正在启动gin服务器...")
 				err := gin.Gin.Run(fmt.Sprintf(":%v", config.Gin.Port))
 				if err != nil {
 					l.Panic("无法启动服务器: ", err.Error())
+					return
 				}
 			}()
 			return nil
