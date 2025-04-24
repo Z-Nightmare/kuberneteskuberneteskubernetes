@@ -1,0 +1,12 @@
+web:
+  port: 8080 
+log:
+  level: debug                # debug / info / warn / error
+  path: logs/app.log
+  enable_rotation: true
+# jwt 配置
+jwt:
+  # jwt的过期时间（小时）
+  expiration: 120
+  # jwt的密钥
+  signing_key: secret
