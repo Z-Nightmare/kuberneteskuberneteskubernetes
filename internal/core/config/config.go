@@ -2,7 +2,6 @@ package config
 
 import (
 	"log"
-	"os"
 
 	"github.com/spf13/viper"
 )
@@ -10,16 +9,16 @@ import (
 var configPath string = ".config.yaml"
 
 func init() {
-	e := os.Getenv("ENV")
-	if e == "dev" {
-		configPath = "config.yaml"
-	}
-	if e == "prod" {
-		configPath = "config-prod.yaml"
-	}
-	if e == "test" {
-		configPath = "config-test.yaml"
-	}
+	// e := os.Getenv("ENV")
+	// if e == "dev" {
+	// 	configPath = "config.yaml"
+	// }
+	// if e == "prod" {
+	// 	configPath = "config-prod.yaml"
+	// }
+	// if e == "test" {
+	// 	configPath = "config-test.yaml"
+	// }
 }
 
 type Config struct {
