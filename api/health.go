@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/gin-gonic/gin"
 	"zeusro.com/gotemplate/internal/core/logprovider"
 	"zeusro.com/gotemplate/internal/core/webprovider"
 	"zeusro.com/gotemplate/internal/service"
@@ -22,14 +23,18 @@ func NewIndexRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine, s se
 }
 
 func (r IndexRoutes) SetUp() {
-	r.gin.Gin.StaticFile("/", "./static/index.html")
 
-	// 在主 engine 上注册路由组
-	index := r.gin.Gin.Group("/")
+	r.gin.Gin.GET("/index", func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
+
+	index := r.gin.Gin.Group("/api")
 	{
-		//http://localhost:8080/health
-		index.Any("health", r.s.Check)
-		index.Any("healthz", r.s.Check)
+		//http://localhost:8080/api/health
+		index.OPTIONS("health", r.s.Check)
+		index.GET("health", r.s.Check)
+		index.OPTIONS("healthz", r.s.Check)
+		index.GET("healthz", r.s.Check)
 	}
 
 }

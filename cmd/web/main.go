@@ -81,7 +81,7 @@ func GracefulShutdown(cleanupFuncs ...func()) {
 			case <-ctx.Done():
 				fmt.Printf("清理任务 %d 超时/取消\n", i+1)
 			default:
-				fmt.Printf("清理任务 %d 完成", i+1)
+				fmt.Printf("清理任务 %d 完成\n", i+1)
 			}
 		})
 	}
