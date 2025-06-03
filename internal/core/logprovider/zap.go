@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	gormlogger "gorm.io/gorm/logger"
-	"zeusro.com/gotemplate/internal/core/config"
+	"zeusro.com/hermes/internal/core/config"
 )
 
 // Logger structure

@@ -1,4 +1,4 @@
-module zeusro.com/gotemplate
+module zeusro.com/hermes
 
 //为了方便调试而降低版本
 go 1.24

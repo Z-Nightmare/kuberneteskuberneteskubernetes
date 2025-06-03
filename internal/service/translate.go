@@ -1,30 +1,29 @@
 package service
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"zeusro.com/hermes/internal/core/config"
 	"zeusro.com/hermes/internal/core/logprovider"
 	"zeusro.com/hermes/internal/core/webprovider"
 )
 
-func NewHealthService(gin webprovider.MyGinEngine, l logprovider.Logger,
-	config config.Config) HealthService {
-	return HealthService{
+func NewTranslateService(gin webprovider.MyGinEngine, l logprovider.Logger,
+	config config.Config) TranslateService {
+	return TranslateService{
 		gin:    gin,
 		l:      l,
 		config: config,
 	}
 }
 
-type HealthService struct {
+type TranslateService struct {
 	gin    webprovider.MyGinEngine
 	l      logprovider.Logger
 	config config.Config
 }
 
-func (s HealthService) Check(ctx *gin.Context) {
+func (s TranslateService) Translate(ctx *gin.Context) {
 	ctx.AbortWithStatusJSON(http.StatusOK, struct {
 		Code int `json:"code"`
 	}{200})
