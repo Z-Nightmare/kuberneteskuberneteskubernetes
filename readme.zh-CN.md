@@ -1,6 +1,8 @@
-## 介绍
+	幸福的人生总是类似 悲剧的家庭却各有不同
 
-`幸福的人生总是类似 悲剧的家庭却各有不同`
+# go-template
+
+## 介绍
 
 ![img](docs/png-clipart-gundam-head-illustration-zgmf-x10a-freedom-gundam-drawing-zgmf-x20a-strike-freedom-line-art-seeds-miscellaneous-symmetry.png)
 
