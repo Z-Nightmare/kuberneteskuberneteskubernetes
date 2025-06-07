@@ -1,6 +1,6 @@
     千里烽烟连夜急 一骑星光踏月还
     
-![image](Hermes.webp)
+![image](docs/Hermes.webp)
 
 ## todo
 
