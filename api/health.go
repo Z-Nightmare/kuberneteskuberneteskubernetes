@@ -11,14 +11,17 @@ type IndexRoutes struct {
 	logger logprovider.Logger
 	gin    webprovider.MyGinEngine
 	health service.HealthService
+	hermes service.TranslateService
 	// m middleware.JWTMiddleware
 }
 
-func NewIndexRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine, s service.HealthService) IndexRoutes {
+func NewIndexRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine,
+	s service.HealthService, herms service.TranslateService) IndexRoutes {
 	return IndexRoutes{
 		logger: logger,
 		gin:    gin,
 		health: s,
+		hermes: herms,
 	}
 }
 
@@ -28,9 +31,7 @@ func (r IndexRoutes) SetUp() {
 		c.File("./static/index.html")
 	})
 
-	r.gin.Gin.POST("/hermes", func(c *gin.Context) {
-
-	})
+	r.gin.Gin.POST("/translate", r.hermes.Translate)
 
 	index := r.gin.Gin.Group("/api")
 	{

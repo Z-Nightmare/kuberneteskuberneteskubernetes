@@ -21,7 +21,7 @@ func TestCallDeepSeek(t *testing.T) {
 	w.Add(1)
 	go func() {
 		defer w.Done()
-		prompt := "使用最简短的语言将下述文字翻译成多国语言（英文，日语）英文：我想学习Go语言。"
+		prompt := "使用最简短的语言将下述文字翻译成多国语言（英文，日语）：我想学习Go语言。"
 		response, err := CallDeepSeek(prompt, apiKey)
 		if err != nil {
 			fmt.Println("调用失败：", err)

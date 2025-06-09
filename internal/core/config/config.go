@@ -29,7 +29,7 @@ type Config struct {
 	JWT                      JWT          `mapstructure:"jwt"`
 	Cities                   []model.City `yaml:"cities"`
 	MinimumDeviationDistance float64      // 最小偏差距离
-	//todo :自行按需补充
+	//自行按需补充
 
 }
 
