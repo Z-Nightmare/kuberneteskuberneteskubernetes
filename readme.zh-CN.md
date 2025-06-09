@@ -11,8 +11,6 @@
 普通版本的自由2.0:
 ![img](docs/967ab04f4a947db97b22c2cd6ffb24b7.jpg)
 
-
-
 mgex 版本的自由:
 ![img](docs/sec04obj02.png)
 
@@ -61,13 +59,13 @@ func (p People) Bullshit() string {
 
 ### Function
 
-本来我觉得文档定义1个概念（module）就够了。但我对于函数的理解，跟一些人的认知有偏差，所以我就稍微讲解一下。都有代码例子，可以自己看看。
+本来我觉得文档定义1个概念（module）就够了。但我对于函数的理解，跟一些人的认知有偏差，所以我就稍微讲解一下。
 
-字面意思，函数（Function）就是解决问题的一种方法论。
+函数（Function）是解决问题的一种方法论。
 函数只有3类公民：输入（input），计算（compute），输出（output）；
 换一种分类思维，函数也分局部函数（Local Function）和云函数（Cloud Function）。
 
-举个例子，打车就是云端函数，看时间就是本地函数。
+打车就是云端函数，看时间就是本地函数。
 本地时间跟服务器有时候不在一个时区，所以询问时间的时间函数，没有必要在云端运行。
 
 #### Local Function
@@ -75,8 +73,6 @@ func (p People) Bullshit() string {
 有些函数带有局限性，没必要云端执行，就放在本地。
 比如 Android api，ios api , Window api，这一类函数基本依赖硬件，所以建议在本地运行；
 
-
 #### Cloud Function
 
 云端函数脱离了本地环境，需要比较大的计算资源，所以叫云端函数。
-
