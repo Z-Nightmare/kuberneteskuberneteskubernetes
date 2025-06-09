@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/spf13/viper"
+	"zeusro.com/hermes/function/web/translate/model"
 )
 
 var configPath string = ".config.yaml"
@@ -22,10 +23,12 @@ func init() {
 }
 
 type Config struct {
-	Debug bool      `mapstructure:"debug"`
-	Gin   GinConfig `mapstructure:"web"`
-	Log   LogConfig `mapstructure:"log"`
-	JWT   JWT       `mapstructure:"jwt"`
+	Debug                    bool         `mapstructure:"debug"`
+	Gin                      GinConfig    `mapstructure:"web"`
+	Log                      LogConfig    `mapstructure:"log"`
+	JWT                      JWT          `mapstructure:"jwt"`
+	Cities                   []model.City `yaml:"cities"`
+	MinimumDeviationDistance float64      // 最小偏差距离
 	//todo :自行按需补充
 
 }

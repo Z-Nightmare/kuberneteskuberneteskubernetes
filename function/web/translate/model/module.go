@@ -3,11 +3,8 @@ package model
 import "math"
 
 type TranslateRequest struct {
-	Text     string `json:"text"`
-	Location struct {
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-	} `json:"location"`
+	Text     string      `json:"text"`
+	Location Coordinates `json:"location"`
 }
 
 type City struct {
@@ -23,10 +20,13 @@ type Coordinates struct {
 	Longitude float64 `yaml:"longitude"`
 }
 
-func (receiver Coordinates) Guess(cities []City) City {
+// Guess 根据经纬度猜测城市
+// 传入经纬度和城市列表，返回距离最近的城市
+// 如果距离超过 acceptableDistance，则返回 nil.acceptableDistanc 要根据城市规模而决定，越大的城市距离越大
+// fixme：实际上国内定位给出的经纬度是故意带偏移的，这部分是否要考虑
+func (receiver Coordinates) GuessCity(cities []City, acceptableDistance float64) *City {
 	var closest City
-	minDistance := math.MaxFloat64 //todo 改一下
-
+	minDistance := math.MaxFloat64
 	for _, city := range cities {
 		dist := haversine(receiver.Latitude, receiver.Longitude, city.Coordinates.Latitude, city.Coordinates.Longitude)
 		if dist < minDistance {
@@ -34,8 +34,11 @@ func (receiver Coordinates) Guess(cities []City) City {
 			closest = city
 		}
 	}
-
-	return closest
+	//距离判定函数
+	if minDistance > acceptableDistance {
+		return nil
+	}
+	return &closest
 }
 
 // haversine 📌 Haversine 公式：计算地球上两点的距离
