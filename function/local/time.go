@@ -7,6 +7,7 @@ import (
 
 // ShowCurrentTimeZone prints the current time zone and time in a friendly format.
 func ShowCurrentTimeZone() {
+	// godotenv.Load("../../.env")
 	now := time.Now()
 	zoneName, offset := now.Zone()
 	offsetHours := offset / 3600
