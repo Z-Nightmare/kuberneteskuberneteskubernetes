@@ -6,9 +6,12 @@ MIRROR_IMAGE  ?= registry.cn-shenzhen.aliyuncs.com/mirror/$app:latest
 MODULE		  ?= $org/$project-name
 ARCH		  ?= amd64
 
-auto_commit:   
+auto_commit:
 	git add .
 	git commit -am "$(now)"
+	# git remote add template git@github.com:zeusro/go-template.git
+	# git fetch template
+	git pull
 	git push
 
 buildAndRun:
