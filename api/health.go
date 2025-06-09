@@ -10,7 +10,7 @@ import (
 type IndexRoutes struct {
 	logger logprovider.Logger
 	gin    webprovider.MyGinEngine
-	s      service.HealthService
+	health service.HealthService
 	// m middleware.JWTMiddleware
 }
 
@@ -18,7 +18,7 @@ func NewIndexRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine, s se
 	return IndexRoutes{
 		logger: logger,
 		gin:    gin,
-		s:      s,
+		health: s,
 	}
 }
 
@@ -28,13 +28,17 @@ func (r IndexRoutes) SetUp() {
 		c.File("./static/index.html")
 	})
 
+	r.gin.Gin.POST("/hermes", func(c *gin.Context) {
+
+	})
+
 	index := r.gin.Gin.Group("/api")
 	{
 		//http://localhost:8080/api/health
-		index.OPTIONS("health", r.s.Check)
-		index.GET("health", r.s.Check)
-		index.OPTIONS("healthz", r.s.Check)
-		index.GET("healthz", r.s.Check)
+		index.OPTIONS("health", r.health.Check)
+		index.GET("health", r.health.Check)
+		index.OPTIONS("healthz", r.health.Check)
+		index.GET("healthz", r.health.Check)
 	}
 
 }

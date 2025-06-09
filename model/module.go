@@ -1,5 +1,7 @@
 package model
 
+import "zeusro.com/hermes/function/web/translate/model"
+
 type Hermes interface {
 	Translate(source Language, location Location) (target []Language, err error)
 }
@@ -13,4 +15,9 @@ type Language struct {
 type Location struct {
 	Latitude  float64 // 纬度
 	Longitude float64 // 经度
+}
+
+type HermesConfig struct {
+	Mode   string       `yaml:"mode"`
+	Cities []model.City `yaml:"cities"`
 }

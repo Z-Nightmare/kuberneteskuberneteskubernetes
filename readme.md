@@ -2,10 +2,10 @@
     
 <img src="/docs/Hermes.webp" alt="image" style="width:50%; height:50%;" />
 
-## todo
+## 流程设计
 
-1. 获取所在位置，根据所在位置自动建立对应的目标语言 k-v map
-1. 调用翻译api完成目标语言翻译
+1. ✓前端获取所在位置，根据所在位置自动建立对应的目标语言 k-v map
+1. ✓调用翻译api完成目标语言翻译
 1. 分治算法
 1. 多线程调用翻译api
 1. 整理目标语言
@@ -21,7 +21,7 @@ type Hermes interface {
 
 ## api
 
-```cmd
+```bash
 curl 'https://your-api-endpoint.com/translate' \
   -H 'sec-ch-ua-platform: "macOS"' \
   -H 'Referer;' \
