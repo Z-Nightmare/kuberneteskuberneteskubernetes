@@ -10,7 +10,7 @@ auto_commit:
 	git add .
 	git commit -am "$(now)"
 	# git remote add template git@github.com:zeusro/go-template.git
-	# git fetch template
+	# git pull template master
 	git pull
 	git push
 
