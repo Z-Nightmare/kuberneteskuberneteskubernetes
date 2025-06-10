@@ -59,7 +59,7 @@ curl 'https://your-api-endpoint.com/translate' \
 
 ## web
 
-![image](docs/example.png)
+<img src="/docs/example.png" alt="image" style="width:50%; height:50%;" />
 
 ## usage
 
@@ -71,9 +71,7 @@ echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
 
 - 按需配置一下 cmd/web/.config.yaml
 
-- 进入 cmd/web 目录
-
-make run ，打开 http://localhost:8080/translate 即可运行。
+- 进入 cmd/web 目录 ，make run ，打开 http://localhost:8080/translate 即可运行。
 
 ## todo
 
