@@ -21,7 +21,6 @@
 1. 整理目标语言
 1. 得到结果
 
-
 ## model
 
 ```go
@@ -34,6 +33,8 @@ type Hermes interface {
 
 http://localhost:8080/translate
 
+- request
+
 ```bash
 curl 'https://your-api-endpoint.com/translate' \
   -H 'sec-ch-ua-platform: "macOS"' \
@@ -43,18 +44,36 @@ curl 'https://your-api-endpoint.com/translate' \
   -H 'DNT: 1' \
   -H 'Content-Type: application/json' \
   -H 'sec-ch-ua-mobile: ?0' \
-  --data-raw '{"text":"fff","location":{"latitude":63.200906186376439,"longitude":112.20250603795485}}'
+  --data-raw '{"text":"我要学习所有语言","location":{"latitude":63.200906186376439,"longitude":112.20250603795485}}'
 ```
+
+- response
 
 ```json
 {
-  "text": "Hello world",
-  "location": {
-    "latitude": 31.2304,
-    "longitude": 121.4737
-  }
+    "code": 200,
+    "message": "- 中文: 我要学习所有语言  \n- 英语: I want to learn all languages  \n- 日语: 私はすべての言語を学びたい",
+    "cost": 5016763792
 }
 ```
+
+## web
+
+![image](docs/example.png)
+
+## usage
+
+- 买一下deepseek api 授权并配置到.env
+
+```bash
+echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
+```
+
+- 按需配置一下 cmd/web/.config.yaml
+
+- 进入 cmd/web 目录
+
+make run ，打开 http://localhost:8080/translate 即可运行。
 
 ## todo
 

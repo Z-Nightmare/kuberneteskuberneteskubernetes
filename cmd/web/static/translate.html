@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>语言翻译器</title>
+  <title>Hermes translate</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     textarea { width: 100%; height: 100px; margin: 10px 0; }
@@ -11,15 +11,15 @@
 </head>
 <body>
 
-  <h1>🌐 语言翻译器</h1>
+  <h1>🌐 Hermes translate</h1>
 
-  <label for="inputText">输入语言：</label>
-  <textarea id="inputText" placeholder="请输入需要翻译的内容"></textarea>
+  <label for="inputText">输入语言/Input Language：</label>
+  <textarea id="inputText" placeholder="请输入需要翻译的内容/your language"></textarea>
 
-  <label for="outputText">输出语言：</label>
-  <textarea id="outputText" placeholder="翻译结果将在此显示" readonly></textarea>
+  <label for="outputText">输出语言/Output Language：</label>
+  <textarea id="outputText" placeholder="翻译结果将在此显示/translate result" readonly></textarea>
 
-  <button onclick="translateText()">翻译</button>
+  <button onclick="translateText()">翻译 Translate</button>
 
   <script>
     async function translateText() {
