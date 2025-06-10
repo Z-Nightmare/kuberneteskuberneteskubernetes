@@ -19,6 +19,12 @@ type DeepSeekTranslator struct {
 	ApiKey string
 }
 
+func NewDeepSeekTranslator(apiKey string) DeepSeekTranslator {
+	return DeepSeekTranslator{
+		ApiKey: apiKey,
+	}
+}
+
 // NewDeepSeekTranslator AI翻译
 // source string
 // targets []string

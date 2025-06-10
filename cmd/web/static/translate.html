@@ -46,7 +46,7 @@
           };
 
           // 调用 Web API
-          const response = await fetch("http://localhost://8080/translate", {
+          const response = await fetch("http://localhost:8080/translate", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -56,8 +56,8 @@
 
           const result = await response.json();
 
-          if (response.ok && result.translatedText) {
-            document.getElementById("outputText").value = result.translatedText;
+          if (response.ok && result.code) {
+            document.getElementById("outputText").value = result.message;
           } else {
             document.getElementById("outputText").value = "翻译失败：" + (result.error || "未知错误");
           }

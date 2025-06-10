@@ -21,10 +21,6 @@
 1. 整理目标语言
 1. 得到结果
 
-## todo
-
-1. 缓存用户的地理位置
-
 
 ## model
 
@@ -35,6 +31,8 @@ type Hermes interface {
 ```
 
 ## api
+
+http://localhost:8080/translate
 
 ```bash
 curl 'https://your-api-endpoint.com/translate' \
@@ -57,3 +55,7 @@ curl 'https://your-api-endpoint.com/translate' \
   }
 }
 ```
+
+## todo
+
+1. 缓存用户的地理位置

@@ -31,6 +31,9 @@ func (r IndexRoutes) SetUp() {
 		c.File("./static/index.html")
 	})
 
+	r.gin.Gin.GET("/translate", func(c *gin.Context) {
+		c.File("./static/translate.html")
+	})
 	r.gin.Gin.POST("/translate", r.hermes.Translate)
 
 	index := r.gin.Gin.Group("/api")

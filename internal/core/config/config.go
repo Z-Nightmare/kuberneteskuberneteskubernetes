@@ -28,7 +28,7 @@ type Config struct {
 	Log                      LogConfig    `mapstructure:"log"`
 	JWT                      JWT          `mapstructure:"jwt"`
 	Cities                   []model.City `yaml:"cities"`
-	MinimumDeviationDistance float64      // 最小偏差距离
+	MinimumDeviationDistance float64      `yaml:"minimum_deviation_distance"` // 最小偏差距离
 	//自行按需补充
 
 }
