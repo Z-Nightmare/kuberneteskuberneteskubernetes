@@ -76,3 +76,4 @@ echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
 ## todo
 
 1. 缓存用户的地理位置
+1. 跳过与当前语言一致的目标语言
