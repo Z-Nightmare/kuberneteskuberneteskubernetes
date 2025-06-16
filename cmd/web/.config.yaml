@@ -23,6 +23,7 @@ cities:
       - "中文"
       - "英语"
       - "日语"
+      - "韩语"
   - name: "Kuala Lumpur"
     timezone: "Asia/Kuala_Lumpur"
     coordinates:
