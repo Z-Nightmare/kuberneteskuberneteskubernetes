@@ -63,15 +63,15 @@ curl 'https://your-api-endpoint.com/translate' \
 
 ## usage
 
-- 买一下deepseek api 授权并配置到.env
+```BASH
+  echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
+  #//optional:
+  code cmd/web/.config.yaml
+  cd cmd/web
+  make run
 
-```bash
-echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
+  open http://localhost:8080/translate
 ```
-
-- 按需配置一下 cmd/web/.config.yaml
-
-- 进入 cmd/web 目录 ，make run ，打开 http://localhost:8080/translate 即可运行。
 
 ## todo
 

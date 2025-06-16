@@ -111,7 +111,7 @@ func StartGinServer(
 			// middlewares.SetUp()
 			router.SetUp()
 			go func() {
-				l.Info("正在启动gin服务器...")
+				l.Info("正在启动gin服务器 http://localhost:%v/translate", config.Gin.Port)
 				err := gin.Gin.Run(fmt.Sprintf(":%v", config.Gin.Port))
 				if err != nil {
 					l.Panic("无法启动服务器: ", err.Error())
