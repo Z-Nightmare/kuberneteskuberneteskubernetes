@@ -19,8 +19,8 @@ type City struct {
 
 // Coordinates 经纬度
 type Coordinates struct {
-	Latitude  float64 `yaml:"latitude"`
-	Longitude float64 `yaml:"longitude"`
+	Latitude  float64 `yaml:"latitude"`  //纬度
+	Longitude float64 `yaml:"longitude"` //经度
 }
 
 // Guess 根据经纬度猜测城市
