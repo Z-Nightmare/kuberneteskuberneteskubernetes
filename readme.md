@@ -77,3 +77,4 @@ curl 'https://your-api-endpoint.com/translate' \
 
 1. 缓存用户的地理位置
 1. 跳过与当前语言一致的目标语言
+2. 发布社交媒体
