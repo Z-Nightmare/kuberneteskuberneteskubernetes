@@ -67,8 +67,7 @@ curl 'https://your-api-endpoint.com/translate' \
   echo 'DEEPSEEK_API_KEY=sk-xxx' >> .env
   #//optional:
   code cmd/web/.config.yaml
-  cd cmd/web
-  make run
+  cd cmd/web;make run
 
   open http://localhost:8080/translate
 ```
