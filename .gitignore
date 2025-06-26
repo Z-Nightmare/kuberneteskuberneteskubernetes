@@ -24,3 +24,5 @@ app
 .config.yaml
 cmd/web/__debug_bin*
 .env
+
+output/

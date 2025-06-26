@@ -6,11 +6,11 @@ import (
 )
 
 type APIResponse struct {
+	Cost    time.Duration `json:"cost,omitempty"`  // 处理耗时
 	Code    int           `json:"code"`            // 业务状态码（如 0 表示成功）
 	Message string        `json:"message"`         // 消息提示
 	Data    interface{}   `json:"data,omitempty"`  // 返回数据体，可为任意结构
 	Error   string        `json:"error,omitempty"` // 可选错误描述（一般调试用）
-	Cost    time.Duration `json:"cost,omitempty"`  // 处理耗时
 }
 
 func NewErrorAPIResponse(cost time.Duration, msg string) APIResponse {

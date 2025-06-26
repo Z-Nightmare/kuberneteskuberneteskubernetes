@@ -2,6 +2,7 @@ package service
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,7 @@ type TranslateService struct {
 	config config.Config
 }
 
+// Translate 多种语言长文本翻译时可以选择触发
 func (s TranslateService) Translate(ctx *gin.Context) {
 	start := time.Now()
 	var request model.TranslateRequest
@@ -50,15 +52,38 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 		s.l.Errorf("加载环境变量失败：%v", err)
 		return
 	}
-	//调用实际的翻译服务
+	format := s.config.OutputFormat
+	responses := make([]baseModel.APIResponse, 0)
+	code := 200
+	if format == "file" {
+		for _, language := range city.Language {
+			var wg sync.WaitGroup
+			go func(lang string, wg *sync.WaitGroup) {
+				defer wg.Done()
+				wg.Add(1)
+				// 调用实际的翻译服务
+				resp, statusCode := s.doTranslate(request.Text, []string{lang}, start)
+				if statusCode != 200 {
+					code = statusCode
+				}
+				responses = append(responses, resp...)
+			}(language, &wg)
+			wg.Wait()
+		}
+	} else {
+		// 调用实际的翻译服务
+		responses, code = s.doTranslate(request.Text, city.Language, start)
+	}
+	ctx.AbortWithStatusJSON(code, responses)
+}
+
+func (s TranslateService) doTranslate(text string, languages []string, start time.Time) ([]baseModel.APIResponse, int) {
 	translator := translate.NewDeepSeekTranslator(os.Getenv("DEEPSEEK_API_KEY"))
-	// cost time.Duration, output string, err error
-	_, output, err := translator.Translate(request.Text, city.Language)
+	_, output, err := translator.Translate(text, languages)
 	if err != nil {
 		response := baseModel.NewErrorAPIResponse(time.Since(start), err.Error())
-		ctx.AbortWithStatusJSON(response.Code, response)
-		return
+		return []baseModel.APIResponse{response}, response.Code
 	}
 	response := baseModel.NewSuccessAPIResponse(time.Since(start), output)
-	ctx.AbortWithStatusJSON(response.Code, response)
+	return []baseModel.APIResponse{response}, response.Code
 }
