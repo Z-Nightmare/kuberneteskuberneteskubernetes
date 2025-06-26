@@ -39,7 +39,7 @@ func exportResponseToFile(lang string, response baseModel.APIResponse) error {
 	}
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "%s\n\n%s\n", time.Now().Format(time.RFC3339), response.Data)
+	_, err = fmt.Fprintf(f, "%s\n\n%vs\n", time.Now().Format(time.RFC3339), response.Message)
 	return err
 }
 
@@ -68,30 +68,31 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 	format := s.config.OutputFormat
 	responses := make([]baseModel.APIResponse, 0)
 	code := 200
-	if format == "file" {
-		for _, language := range city.Language {
-			var wg sync.WaitGroup
-			go func(lang string, wg *sync.WaitGroup) {
-				defer wg.Done()
-				wg.Add(1)
-				// 调用实际的翻译服务
-				resp, statusCode := s.doTranslate(request.Text, []string{lang}, start)
-				if statusCode != 200 {
-					code = statusCode
-				}
-				if len(resp) > 0 {
-					exportErr := exportResponseToFile(lang, resp[0])
-					if exportErr != nil {
-						s.l.Errorf("导出文件失败: %v", exportErr)
-					}
-					responses = append(responses, resp...)
-				}
-			}(language, &wg)
-			wg.Wait()
-		}
-	} else {
+	if format == "console" {
 		// 调用实际的翻译服务
 		responses, code = s.doTranslate(request.Text, city.Language, start)
+		ctx.AbortWithStatusJSON(code, responses)
+		return
+	}
+	for _, language := range city.Language {
+		var wg sync.WaitGroup
+		go func(lang string, wg *sync.WaitGroup) {
+			defer wg.Done()
+			wg.Add(1)
+			// 调用实际的翻译服务
+			resp, statusCode := s.doTranslate(request.Text, []string{lang}, start)
+			if statusCode != 200 {
+				code = statusCode
+			}
+			if len(resp) > 0 {
+				exportErr := exportResponseToFile(lang, resp[0])
+				if exportErr != nil {
+					s.l.Errorf("导出文件失败: %v", exportErr)
+				}
+				responses = append(responses, resp...)
+			}
+		}(language, &wg)
+		wg.Wait()
 	}
 	ctx.AbortWithStatusJSON(code, responses)
 }

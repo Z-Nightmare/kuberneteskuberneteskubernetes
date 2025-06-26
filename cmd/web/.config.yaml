@@ -16,7 +16,7 @@ minimum_deviation_distance: 666 # 666km
 # 默认 console ，支持文件输出
 # output: console
 # 选择文件输出时，会自动触发语言分治，把结果导出到多个文件
-outout: file
+output: file
 cities:
   - name: "Guangzhou"
     timezone: "Asia/Shanghai"

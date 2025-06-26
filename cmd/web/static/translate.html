@@ -45,14 +45,20 @@
             }
           };
 
-          // 调用 Web API
+          // 调用 Web API，设置超时
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
           const response = await fetch("http://localhost:8080/translate", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           const result = await response.json();
 
