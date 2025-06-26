@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -28,6 +29,18 @@ type TranslateService struct {
 	gin    webprovider.MyGinEngine
 	l      logprovider.Logger
 	config config.Config
+}
+
+func exportResponseToFile(lang string, response baseModel.APIResponse) error {
+	filename := fmt.Sprintf("output/%s.md", lang)
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = fmt.Fprintf(f, "%s\n\n%s\n", time.Now().Format(time.RFC3339), response.Data)
+	return err
 }
 
 // Translate 多种语言长文本翻译时可以选择触发
@@ -66,7 +79,13 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 				if statusCode != 200 {
 					code = statusCode
 				}
-				responses = append(responses, resp...)
+				if len(resp) > 0 {
+					exportErr := exportResponseToFile(lang, resp[0])
+					if exportErr != nil {
+						s.l.Errorf("导出文件失败: %v", exportErr)
+					}
+					responses = append(responses, resp...)
+				}
 			}(language, &wg)
 			wg.Wait()
 		}
