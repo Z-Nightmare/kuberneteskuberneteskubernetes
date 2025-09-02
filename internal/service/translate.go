@@ -70,10 +70,12 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 	code := 200
 	if format == "console" {
 		// 调用实际的翻译服务
+		//console模式选择一次性翻译全部
 		responses, code = s.doTranslate(request.Text, city.Language, start)
 		ctx.AbortWithStatusJSON(code, responses)
 		return
 	}
+	//非console模式选择多语言并发翻译
 	for _, language := range city.Language {
 		var wg sync.WaitGroup
 		go func(lang string, wg *sync.WaitGroup) {

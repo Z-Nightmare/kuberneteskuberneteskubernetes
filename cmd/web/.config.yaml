@@ -14,9 +14,9 @@ jwt:
   signing_key: secret
 minimum_deviation_distance: 666 # 666km
 # 默认 console ，支持文件输出
-# output: console
+output: console
 # 选择文件输出时，会自动触发语言分治，把结果导出到多个文件
-output: file
+# output: file
 cities:
   - name: "Guangzhou"
     timezone: "Asia/Shanghai"
@@ -24,7 +24,7 @@ cities:
       latitude: 23.114204056744757
       longitude: 113.26364429449798
     language: 
-      - "中文"
+      - "繁中"
       - "英语"
       - "日语"
       - "韩语"

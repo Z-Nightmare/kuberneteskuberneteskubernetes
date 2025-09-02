@@ -39,12 +39,12 @@ func (receiver Coordinates) GuessCity(cities []City, acceptableDistance float64)
 			closest = city
 		}
 	}
-	fmt.Println("Closest city found:", closest.Name, "at distance:", minDistance, "km")
+	fmt.Println("acceptableDistance", acceptableDistance, ".Closest city found:", closest.Name, "at distance:", minDistance, "km")
 	//距离判定函数
-	if minDistance < acceptableDistance {
-		return nil
+	if minDistance <= acceptableDistance {
+		return &closest
 	}
-	return &closest
+	return nil
 }
 
 // haversine 📌 Haversine 公式：计算地球上两点的距离
