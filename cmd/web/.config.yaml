@@ -1,3 +1,5 @@
+# 启动debug模式会把日志导到控制台
+debug: true
 web:
   port: 8080 
 log:
