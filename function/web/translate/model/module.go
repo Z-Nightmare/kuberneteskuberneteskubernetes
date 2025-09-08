@@ -39,7 +39,7 @@ func (receiver Coordinates) GuessCity(cities []City, acceptableDistance float64)
 			closest = city
 		}
 	}
-	fmt.Println("acceptableDistance", acceptableDistance, ".Closest city found:", closest.Name, "at distance:", minDistance, "km")
+	fmt.Println("acceptableDistance:", acceptableDistance, ".Closest city found:", closest.Name, "at distance:", minDistance, "km")
 	//距离判定函数
 	if minDistance <= acceptableDistance {
 		return &closest
