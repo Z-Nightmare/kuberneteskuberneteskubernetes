@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"zeusro.com/gotemplate/internal/core/config"
-	"zeusro.com/gotemplate/internal/core/logprovider"
-	"zeusro.com/gotemplate/internal/core/webprovider"
+	"zeusro.com/hermes/internal/core/config"
+	"zeusro.com/hermes/internal/core/logprovider"
+	"zeusro.com/hermes/internal/core/webprovider"
 )
 
 func NewHealthService(gin webprovider.MyGinEngine, l logprovider.Logger,

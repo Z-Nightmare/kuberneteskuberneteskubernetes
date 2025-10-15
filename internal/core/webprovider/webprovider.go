@@ -12,9 +12,9 @@ import (
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"zeusro.com/gotemplate/internal/core/config"
-	"zeusro.com/gotemplate/internal/core/logprovider"
-	"zeusro.com/gotemplate/internal/middleware"
+	"zeusro.com/hermes/internal/core/config"
+	"zeusro.com/hermes/internal/core/logprovider"
+	"zeusro.com/hermes/internal/middleware"
 )
 
 type MyGinEngine struct {

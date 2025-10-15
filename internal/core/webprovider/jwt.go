@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"zeusro.com/gotemplate/internal/core/config"
-	"zeusro.com/gotemplate/internal/core/logprovider"
+	"zeusro.com/hermes/internal/core/config"
+	"zeusro.com/hermes/internal/core/logprovider"
 )
 
 var (

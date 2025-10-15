@@ -1,4 +1,5 @@
 # 启动debug模式会把日志导到控制台
+mode: debug
 debug: true
 web:
   port: 8080 
@@ -12,3 +13,28 @@ jwt:
   expiration: 120
   # jwt的密钥
   signing_key: secret
+minimum_deviation_distance: 666 # 666km
+# 默认 console ，支持文件输出
+output: console
+# 选择文件输出时，会自动触发语言分治，把结果导出到多个文件
+# output: file
+cities:
+  - name: "Guangzhou"
+    timezone: "Asia/Shanghai"
+    coordinates:
+      latitude: 23.114204056744757
+      longitude: 113.26364429449798
+    language: 
+      - "繁中"
+      - "英语"
+      - "日语"
+      - "韩语"
+  - name: "Kuala Lumpur"
+    timezone: "Asia/Kuala_Lumpur"
+    coordinates:
+      latitude: 3.1390
+      longitude: 101.6869
+    language: 
+      - "马来语"
+      - "英语"
+      - "中文"

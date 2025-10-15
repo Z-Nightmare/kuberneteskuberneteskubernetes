@@ -11,12 +11,12 @@ import (
 
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
-	"zeusro.com/gotemplate/api"
-	"zeusro.com/gotemplate/internal/core"
-	"zeusro.com/gotemplate/internal/core/config"
-	"zeusro.com/gotemplate/internal/core/logprovider"
-	"zeusro.com/gotemplate/internal/core/webprovider"
-	"zeusro.com/gotemplate/internal/service"
+	"zeusro.com/hermes/api"
+	"zeusro.com/hermes/internal/core"
+	"zeusro.com/hermes/internal/core/config"
+	"zeusro.com/hermes/internal/core/logprovider"
+	"zeusro.com/hermes/internal/core/webprovider"
+	"zeusro.com/hermes/internal/service"
 )
 
 func main() {
@@ -111,7 +111,7 @@ func StartGinServer(
 			// middlewares.SetUp()
 			router.SetUp()
 			go func() {
-				l.Info("正在启动gin服务器...")
+				l.Infof("正在启动gin服务器 http://localhost:%v/translate", config.Gin.Port)
 				err := gin.Gin.Run(fmt.Sprintf(":%v", config.Gin.Port))
 				if err != nil {
 					l.Panic("无法启动服务器: ", err.Error())
