@@ -1,6 +1,6 @@
-	幸福的人生总是类似 悲剧的家庭却各有不同
-
 # go-template
+
+	幸福的人生总是类似 悲剧的家庭却各有不同
 
 ## 介绍
 
@@ -14,7 +14,6 @@
 mgex 版本的自由:
 ![img](docs/sec04obj02.png)
 
-
 ## 核心概念
 
 ### Module
@@ -27,23 +26,22 @@ mgex 版本的自由:
 type People interface {
 	Bullshit() string
 }
-
 ```
 
 如果是以前那些 java 没学好的同事，估计会这样写：
 
 ```go
-func (p Teacher) Bullshit() string {
-	return p.Thought
-}
+    func (p Teacher) Bullshit() string {
+    	return p.Thought
+    }
 
-func (p Colleague) Bullshit() string {
-	return p.Thought
-}
+    func (p Colleague) Bullshit() string {
+    	return p.Thought
+    }
 
-func (p Boss) Bullshit() string {
-	return p.Thought
-}
+    func (p Boss) Bullshit() string {
+    	return p.Thought
+    }
 ```
 
 他们给我的感觉就好像“我已经把屎拉好了，他们还在封装纸尿裤”。

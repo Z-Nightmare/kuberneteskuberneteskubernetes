@@ -1,4 +1,5 @@
-now 		  := $(shell date)
+BUILD_TIME 			  := $(shell LC_TIME=zh_CN.UTF-8 date +"%Y-%m-%d %H:%M:%S %A")
+#BUILD_TIME            := $(shell date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || powershell -Command "Get-Date -Format o")
 PREFIX		  ?= zeusro
 APP_NAME      ?= $app:latest
 IMAGE		  ?= $(PREFIX)/$(APP_NAME)
@@ -8,7 +9,7 @@ ARCH		  ?= amd64
 
 auto_commit:
 	git add .
-	git commit -am "$(now)"
+	git commit -am "$(BUILD_TIME)"
 	# git remote add template git@github.com:zeusro/go-template.git
 	# git pull template master
 	git pull
