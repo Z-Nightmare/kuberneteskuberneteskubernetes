@@ -51,7 +51,7 @@ func NewHealthRoutes(logger logprovider.Logger, gin webprovider.MyGinEngine) Hea
 ### 问题3
 
 ```log
-"Fx 启动失败: missing dependencies for function \"main\".StartGinServer (/Users/adam/code/go-template/cmd/web/main.go:97): missing type: api.Routes"
+"Fx 启动失败: missing dependencies for function \"main\".StartGinServer (/Users/adam/code/go-template/cmd/apiserver/main.go:97): missing type: api.Routes"
 ```
 
 ```go
@@ -65,7 +65,7 @@ var Modules = fx.Options(
 
 ```log
 "main.main
-	/Users/zeusro/code/go-template/cmd/web/main.go:38
+	/Users/zeusro/code/go-template/cmd/apiserver/main.go:38
 	runtime.main
 	/usr/local/go/src/runtime/proc.go:283"
 ```

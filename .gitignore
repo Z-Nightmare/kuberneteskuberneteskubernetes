@@ -18,10 +18,10 @@ gin-server
 hermes
 kuberneteskuberneteskubernetes
 controller
-cmd/web/web
-cmd/web/gin-server
-cmd/web/hermes
 cmd/controller/controller
+cmd/apiserver/web
+cmd/apiserver/gin-server
+cmd/apiserver/hermes
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -34,7 +34,7 @@ cmd/controller/controller
 config.yaml
 app
 .config.yaml
-cmd/web/__debug_bin*
+cmd/apiserver/__debug_bin*
 .env
 
 output/

@@ -2,7 +2,7 @@
 
 ## api层
 
-api server。
+api server。启动主从模式后请求会随机下发到 controller。
 
 ## controller
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web/translate/model"
 	"github.com/spf13/viper"
@@ -76,6 +77,11 @@ type EtcdConfig struct {
 
 func NewFileConfig() Config {
 	var config Config
+
+	// 允许通过环境变量覆盖配置路径（便于 cmd/k3 之类的 CLI 管理多实例/多配置）
+	if p := os.Getenv("CONFIG_PATH"); p != "" {
+		configPath = p
+	}
 
 	viper.SetConfigType("yaml")
 	viper.SetConfigFile(configPath)

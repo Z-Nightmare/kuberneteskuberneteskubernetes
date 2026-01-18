@@ -66,7 +66,7 @@
 
 ### 集成
 
-- 已集成到主应用 (`cmd/web/main.go`)
+- 已集成到主应用 (`cmd/apiserver/main.go`)
 - 使用 fx 依赖注入框架
 - 自动注册到 Gin 路由
 
