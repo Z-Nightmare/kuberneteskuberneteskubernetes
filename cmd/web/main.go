@@ -17,6 +17,7 @@ import (
 	"zeusro.com/hermes/internal/core/logprovider"
 	"zeusro.com/hermes/internal/core/webprovider"
 	"zeusro.com/hermes/internal/service"
+	"zeusro.com/hermes/pkg/apiserver"
 )
 
 func main() {
@@ -26,7 +27,8 @@ func main() {
 		// middleware.Module,
 		// repository.Module,
 		service.Modules,
-		api.Modules)
+		api.Modules,
+		apiserver.Module)
 	app := fx.New(modules,
 		fx.WithLogger(func() fxevent.Logger {
 			logger := logprovider.GetLogger()
