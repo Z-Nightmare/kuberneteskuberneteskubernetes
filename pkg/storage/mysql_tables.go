@@ -73,6 +73,14 @@ type SecretResource struct {
 	StringData string `gorm:"type:json"` // StringData 字段的 JSON
 }
 
+// NodeResource Node 资源表
+type NodeResource struct {
+	BaseResource
+	Phase   string `gorm:"size:50;index"` // NodePhase: Pending, Running, Terminated
+	Spec    string `gorm:"type:json"`      // NodeSpec 的 JSON
+	Status  string `gorm:"type:json"`      // NodeStatus 的 JSON
+}
+
 // tableName 根据 GVK 生成表名
 func tableName(gvk schema.GroupVersionKind) string {
 	group := gvk.Group
@@ -108,6 +116,10 @@ func getTableModel(gvk schema.GroupVersionKind) interface{} {
 	case "Secret":
 		if gvk.Group == "" && gvk.Version == "v1" {
 			return &SecretResource{}
+		}
+	case "Node":
+		if gvk.Group == "" && gvk.Version == "v1" {
+			return &NodeResource{}
 		}
 	}
 	// 默认返回基础资源（用于未知资源类型）
@@ -394,4 +406,65 @@ func (s *MySQLStore) loadGenericResource(gvk schema.GroupVersionKind, namespace,
 
 	// 如果解析失败，返回错误
 	return nil, fmt.Errorf("failed to load generic resource")
+}
+
+// saveNode 保存 Node 资源（支持创建和更新）
+func (s *MySQLStore) saveNode(node *corev1.Node) error {
+	tableName := tableName(node.GroupVersionKind())
+	base := toBaseResource(node)
+
+	specJSON, _ := json.Marshal(node.Spec)
+	statusJSON, _ := json.Marshal(node.Status)
+
+	resource := NodeResource{
+		BaseResource: base,
+		Phase:        string(node.Status.Phase),
+		Spec:         string(specJSON),
+		Status:       string(statusJSON),
+	}
+
+	// 检查节点是否已存在
+	var existing NodeResource
+	err := s.db.Table(tableName).Where("name = ?", node.Name).First(&existing).Error
+	if err == nil {
+		// 节点已存在，执行更新
+		resource.ID = existing.ID
+		resource.CreatedAt = existing.CreatedAt
+		return s.db.Table(tableName).Save(&resource).Error
+	}
+
+	// 节点不存在，创建新节点
+	return s.db.Table(tableName).Create(&resource).Error
+}
+
+// loadNode 加载 Node 资源
+func (s *MySQLStore) loadNode(gvk schema.GroupVersionKind, namespace, name string) (*corev1.Node, error) {
+	tableName := tableName(gvk)
+	var resource NodeResource
+
+	// Node 资源没有 namespace，使用空字符串查询
+	if err := s.db.Table(tableName).Where("name = ?", name).First(&resource).Error; err != nil {
+		return nil, err
+	}
+
+	node := &corev1.Node{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: fmt.Sprintf("%s/%s", gvk.Group, gvk.Version),
+			Kind:       gvk.Kind,
+		},
+	}
+
+	if err := fromBaseResource(resource.BaseResource, node); err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal([]byte(resource.Spec), &node.Spec)
+	json.Unmarshal([]byte(resource.Status), &node.Status)
+
+	// 恢复 Phase
+	if resource.Phase != "" {
+		node.Status.Phase = corev1.NodePhase(resource.Phase)
+	}
+
+	return node, nil
 }

@@ -4,7 +4,7 @@
 
 api server。
 
-## 控制器
+## controller
 
 - scheduler
 - kubelet

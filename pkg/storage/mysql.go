@@ -87,6 +87,10 @@ func (s *MySQLStore) Get(gvk schema.GroupVersionKind, namespace, name string) (r
 		if gvk.Group == "" && gvk.Version == "v1" {
 			return s.loadService(gvk, namespace, name)
 		}
+	case "Node":
+		if gvk.Group == "" && gvk.Version == "v1" {
+			return s.loadNode(gvk, namespace, name)
+		}
 	}
 
 	// 通用资源加载
@@ -104,8 +108,11 @@ func (s *MySQLStore) List(gvk schema.GroupVersionKind, namespace string) ([]runt
 	var bases []BaseResource
 
 	query := s.db.Table(tableName)
-	if namespace != "" {
-		query = query.Where("namespace = ?", namespace)
+	// Node 资源没有 namespace，忽略 namespace 参数
+	if gvk.Kind != "Node" || gvk.Group != "" || gvk.Version != "v1" {
+		if namespace != "" {
+			query = query.Where("namespace = ?", namespace)
+		}
 	}
 
 	if err := query.Find(&bases).Error; err != nil {
@@ -139,12 +146,14 @@ func (s *MySQLStore) Create(gvk schema.GroupVersionKind, obj runtime.Object) err
 		return err
 	}
 
-	// 检查资源是否已存在
+	// 检查资源是否已存在（Node 资源允许更新，所以跳过检查）
 	tableName := tableName(gvk)
-	var count int64
-	query := s.db.Table(tableName).Where("name = ? AND namespace = ?", name, namespace)
-	if err := query.Count(&count).Error; err == nil && count > 0 {
-		return fmt.Errorf("resource already exists: %s/%s", namespace, name)
+	if gvk.Kind != "Node" || gvk.Group != "" || gvk.Version != "v1" {
+		var count int64
+		query := s.db.Table(tableName).Where("name = ? AND namespace = ?", name, namespace)
+		if err := query.Count(&count).Error; err == nil && count > 0 {
+			return fmt.Errorf("resource already exists: %s/%s", namespace, name)
+		}
 	}
 
 	// 设置 resourceVersion
@@ -209,6 +218,20 @@ func (s *MySQLStore) Create(gvk schema.GroupVersionKind, obj runtime.Object) err
 				return nil
 			}
 		}
+	case "Node":
+		if gvk.Group == "" && gvk.Version == "v1" {
+			if node, ok := obj.(*corev1.Node); ok {
+				if err := s.saveNode(node); err != nil {
+					return fmt.Errorf("failed to save node: %w", err)
+				}
+				// 通知 watchers
+				s.notifyWatchers(gvk, namespace, ResourceEvent{
+					Type:   EventAdded,
+					Object: obj,
+				})
+				return nil
+			}
+		}
 	}
 
 	// 通用资源保存
@@ -252,7 +275,14 @@ func (s *MySQLStore) Update(gvk schema.GroupVersionKind, obj runtime.Object) err
 
 	// 先删除旧资源，再创建新资源（简化实现）
 	tableName := tableName(gvk)
-	if err := s.db.Table(tableName).Where("name = ? AND namespace = ?", name, namespace).Delete(&BaseResource{}).Error; err != nil {
+	query := s.db.Table(tableName)
+	// Node 资源没有 namespace
+	if gvk.Kind == "Node" && gvk.Group == "" && gvk.Version == "v1" {
+		query = query.Where("name = ?", name)
+	} else {
+		query = query.Where("name = ? AND namespace = ?", name, namespace)
+	}
+	if err := query.Delete(&BaseResource{}).Error; err != nil {
 		return fmt.Errorf("failed to delete old resource: %w", err)
 	}
 
@@ -281,7 +311,14 @@ func (s *MySQLStore) Delete(gvk schema.GroupVersionKind, namespace, name string)
 
 	// 删除资源
 	tableName := tableName(gvk)
-	if err := s.db.Table(tableName).Where("name = ? AND namespace = ?", name, namespace).Delete(&BaseResource{}).Error; err != nil {
+	query := s.db.Table(tableName)
+	// Node 资源没有 namespace
+	if gvk.Kind == "Node" && gvk.Group == "" && gvk.Version == "v1" {
+		query = query.Where("name = ?", name)
+	} else {
+		query = query.Where("name = ? AND namespace = ?", name, namespace)
+	}
+	if err := query.Delete(&BaseResource{}).Error; err != nil {
 		return fmt.Errorf("failed to delete resource: %w", err)
 	}
 

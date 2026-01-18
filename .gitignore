@@ -17,9 +17,11 @@ web
 gin-server
 hermes
 kuberneteskuberneteskubernetes
+controller
 cmd/web/web
 cmd/web/gin-server
 cmd/web/hermes
+cmd/controller/controller
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
