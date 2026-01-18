@@ -47,7 +47,11 @@ func NewFiberEngine(cfg config.Config) FiberEngine {
 
 	return FiberEngine{
 		App: app,
-		Api: app.Group("/api"),
+		// Api router group is for mounting API-like routes.
+		// Keep it at root so Kubernetes-style paths stay canonical:
+		// - /api/v1/...
+		// - /apis/<group>/<version>/...
+		Api: app,
 	}
 }
 

@@ -55,47 +55,79 @@ func parseGVKFromContext(c *fiber.Ctx) (schema.GroupVersionKind, error) {
 		return schema.GroupVersionKind{}, fmt.Errorf("invalid path format")
 	}
 
-	var group, version, kind string
+	// 解析路径形态（本项目路由）：
+	// - Core:
+	//   - /api/v1/<resource>
+	//   - /api/v1/namespaces/<ns>/<resource>
+	//   - /api/v1/watch/<resource>
+	//   - /api/v1/watch/namespaces/<ns>/<resource>
+	// - Grouped:
+	//   - /apis/<group>/<version>/<resource>
+	//   - /apis/<group>/<version>/namespaces/<ns>/<resource>
+	//   - /apis/<group>/<version>/watch/<resource>
+	//   - /apis/<group>/<version>/watch/namespaces/<ns>/<resource>
 
-	if parts[0] == "api" {
-		// Core API: /api/v1/pods
+	var group, version string
+	var rest []string
+
+	switch parts[0] {
+	case "api":
 		group = ""
 		version = parts[1]
-		// 从路径中找到 kind（跳过 watch 和 namespaces）
-		for i := 1; i < len(parts); i++ {
-			if parts[i] != "v1" && parts[i] != "watch" && parts[i] != "namespaces" {
-				kind = parts[i]
-				break
-			}
-		}
-	} else if parts[0] == "apis" {
-		// Grouped API: /apis/apps/v1/deployments
+		rest = parts[2:]
+	case "apis":
 		if len(parts) < 4 {
 			return schema.GroupVersionKind{}, fmt.Errorf("invalid grouped API path")
 		}
 		group = parts[1]
 		version = parts[2]
-		// 从路径中找到 kind（跳过 watch 和 namespaces）
-		for i := 3; i < len(parts); i++ {
-			if parts[i] != "watch" && parts[i] != "namespaces" {
-				kind = parts[i]
-				break
-			}
-		}
-	} else {
+		rest = parts[3:]
+	default:
 		return schema.GroupVersionKind{}, fmt.Errorf("unknown API path prefix: %s", parts[0])
 	}
 
-	// 将 kind 转换为正确的格式（首字母大写，其余小写）
-	if len(kind) > 0 {
-		kind = strings.ToUpper(kind[:1]) + strings.ToLower(kind[1:])
+	// optional "watch"
+	if len(rest) > 0 && rest[0] == "watch" {
+		rest = rest[1:]
+	}
+	// optional "namespaces/<ns>"
+	if len(rest) >= 2 && rest[0] == "namespaces" {
+		rest = rest[2:]
+	}
+	if len(rest) < 1 {
+		return schema.GroupVersionKind{}, fmt.Errorf("invalid resource path: %s", path)
 	}
 
-	return schema.GroupVersionKind{
-		Group:   group,
-		Version: version,
-		Kind:    kind,
-	}, nil
+	resource := rest[0]
+	kind, err := kindFromResource(resource)
+	if err != nil {
+		return schema.GroupVersionKind{}, err
+	}
+
+	return schema.GroupVersionKind{Group: group, Version: version, Kind: kind}, nil
+}
+
+func kindFromResource(resource string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(resource)) {
+	case "pods":
+		return "Pod", nil
+	case "services":
+		return "Service", nil
+	case "configmaps":
+		return "ConfigMap", nil
+	case "secrets":
+		return "Secret", nil
+	case "nodes":
+		return "Node", nil
+	case "deployments":
+		return "Deployment", nil
+	case "statefulsets":
+		return "StatefulSet", nil
+	case "daemonsets":
+		return "DaemonSet", nil
+	default:
+		return "", fmt.Errorf("unsupported resource: %s", resource)
+	}
 }
 
 // HandleGet 处理 GET 请求（获取单个资源）
@@ -161,21 +193,29 @@ func (s *APIServer) HandleCreate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	var body map[string]interface{}
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	bodyBytes := c.Body()
+	if len(bodyBytes) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "empty request body"})
 	}
 
-	// 将 JSON 转换为 YAML 格式的字节
-	bodyBytes, err := json.Marshal(body)
+	// 直接用 Kubernetes decoder 解析（同时兼容 YAML/JSON）
+	obj, bodyGVK, err := s.parser.ParseYAML(bodyBytes)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// 使用 parser 解析对象
-	obj, _, err := s.parser.ParseYAML(bodyBytes)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	// 安全校验：请求路径的 GVK 与 body 内声明的 GVK 一致（避免误写入错误资源表）
+	if bodyGVK != nil && (bodyGVK.Group != gvk.Group || bodyGVK.Version != gvk.Version || bodyGVK.Kind != gvk.Kind) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("GVK mismatch: path=%s/%s/%s, body=%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind, bodyGVK.Group, bodyGVK.Version, bodyGVK.Kind),
+		})
+	}
+
+	// 若是 namespaced 资源，允许从 URL 中补全 namespace（body 未填时）
+	if ns := c.Params("namespace"); ns != "" {
+		if meta, ok := obj.(metav1.Object); ok && meta.GetNamespace() == "" {
+			meta.SetNamespace(ns)
+		}
 	}
 
 	// 创建资源
@@ -193,19 +233,27 @@ func (s *APIServer) HandleUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	var body map[string]interface{}
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	bodyBytes := c.Body()
+	if len(bodyBytes) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "empty request body"})
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	obj, bodyGVK, err := s.parser.ParseYAML(bodyBytes)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	obj, _, err := s.parser.ParseYAML(bodyBytes)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	if bodyGVK != nil && (bodyGVK.Group != gvk.Group || bodyGVK.Version != gvk.Version || bodyGVK.Kind != gvk.Kind) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("GVK mismatch: path=%s/%s/%s, body=%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind, bodyGVK.Group, bodyGVK.Version, bodyGVK.Kind),
+		})
+	}
+
+	// 若是 namespaced 资源，允许从 URL 中补全 namespace（body 未填时）
+	if ns := c.Params("namespace"); ns != "" {
+		if meta, ok := obj.(metav1.Object); ok && meta.GetNamespace() == "" {
+			meta.SetNamespace(ns)
+		}
 	}
 
 	// 更新资源

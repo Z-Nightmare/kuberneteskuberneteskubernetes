@@ -147,17 +147,15 @@ func (dc *DeploymentController) syncDeployment(ctx context.Context, deployment *
 		return err
 	}
 
+	selector := deploymentSelectorLabels(deployment)
+
 	var deploymentPods []*corev1.Pod
 	for _, obj := range allPods {
 		if pod, ok := obj.(*corev1.Pod); ok {
-			if pod.Labels["app"] == deployment.Labels["app"] ||
-				pod.OwnerReferences != nil {
-				for _, ref := range pod.OwnerReferences {
-					if ref.Kind == "Deployment" && ref.Name == deployment.Name {
-						deploymentPods = append(deploymentPods, pod)
-						break
-					}
-				}
+			// MySQLStore 目前只持久化 labels/annotations，OwnerReferences 可能不会被完整恢复。
+			// 因此这里优先用 selector.matchLabels 关联 Pod，避免重复创建。
+			if labelsMatchAll(pod.Labels, selector) || hasDeploymentOwnerRef(pod, deployment.Name) {
+				deploymentPods = append(deploymentPods, pod)
 			}
 		}
 	}
@@ -197,6 +195,49 @@ func (dc *DeploymentController) syncDeployment(ctx context.Context, deployment *
 	}
 
 	return nil
+}
+
+func deploymentSelectorLabels(deploy *appsv1.Deployment) map[string]string {
+	if deploy == nil {
+		return map[string]string{}
+	}
+	if deploy.Spec.Selector != nil && len(deploy.Spec.Selector.MatchLabels) > 0 {
+		return deploy.Spec.Selector.MatchLabels
+	}
+	if len(deploy.Spec.Template.Labels) > 0 {
+		return deploy.Spec.Template.Labels
+	}
+	if len(deploy.Labels) > 0 {
+		return deploy.Labels
+	}
+	return map[string]string{}
+}
+
+func labelsMatchAll(labels map[string]string, selector map[string]string) bool {
+	if len(selector) == 0 {
+		return false
+	}
+	for k, v := range selector {
+		if labels == nil {
+			return false
+		}
+		if labels[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func hasDeploymentOwnerRef(pod *corev1.Pod, deployName string) bool {
+	if pod == nil || deployName == "" {
+		return false
+	}
+	for _, ref := range pod.OwnerReferences {
+		if ref.Kind == "Deployment" && ref.Name == deployName {
+			return true
+		}
+	}
+	return false
 }
 
 // createPodForDeployment 为 Deployment 创建 Pod

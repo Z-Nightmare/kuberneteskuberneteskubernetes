@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/storage"
@@ -133,7 +134,9 @@ func (rc *RuntimeController) processPods(ctx context.Context, watchCh <-chan sto
 			case storage.EventDeleted:
 				if pod, ok := event.Object.(*corev1.Pod); ok {
 					rc.logger.Infof("删除 Pod: %s/%s", pod.Namespace, pod.Name)
-					if err := rc.runtime.StopContainer(ctx, pod); err != nil {
+					stopCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+					defer cancel()
+					if err := rc.runtime.StopContainer(stopCtx, pod); err != nil {
 						rc.logger.Error("停止容器失败: ", err.Error())
 					}
 				}
@@ -153,7 +156,9 @@ func (rc *RuntimeController) handlePod(ctx context.Context, pod *corev1.Pod) err
 	// 如果容器未运行，启动它
 	if !status.Running {
 		rc.logger.Infof("启动 Pod 容器: %s/%s", pod.Namespace, pod.Name)
-		if err := rc.runtime.StartContainer(ctx, pod); err != nil {
+		startCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		if err := rc.runtime.StartContainer(startCtx, pod); err != nil {
 			return fmt.Errorf("启动容器失败: %w", err)
 		}
 

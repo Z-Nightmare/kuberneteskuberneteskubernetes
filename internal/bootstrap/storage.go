@@ -72,8 +72,35 @@ func ProvideDBContainerHandle(cfg config.Config, l logprovider.Logger) (*DBConta
 //
 // 注意：这里依赖注入了 DBContainerHandle（即使未使用），是为了确保初始化顺序：
 // 先拉起/等待 DB 容器就绪，再 NewStore() 连接数据库。
-func ProvideStore(cfg config.Config, _ *DBContainerHandle) (storage.Store, error) {
-	return storage.NewStore(cfg.Storage)
+func ProvideStore(cfg config.Config, _ *DBContainerHandle, l logprovider.Logger) (storage.Store, error) {
+	typ := strings.ToLower(strings.TrimSpace(cfg.Storage.Type))
+	if typ != "mysql" {
+		return storage.NewStore(cfg.Storage)
+	}
+
+	// MySQL 在端口开放后仍可能需要一段时间完成初始化，首次连接可能返回 bad connection / EOF。
+	// 这里做一次 best-effort 重试，提升开箱可运行体验。
+	deadline := time.Now().Add(45 * time.Second)
+	var lastErr error
+	attempt := 0
+	for time.Now().Before(deadline) {
+		attempt++
+		s, err := storage.NewStore(cfg.Storage)
+		if err == nil {
+			if attempt > 1 {
+				l.Infof("MySQL 已就绪（重试 %d 次后连接成功）", attempt-1)
+			}
+			return s, nil
+		}
+
+		lastErr = err
+		// 日志降噪：前几次提示，后面只在最后返回错误即可
+		if attempt <= 5 {
+			l.Warnf("MySQL 尚未就绪，等待重试（attempt=%d）: %v", attempt, err)
+		}
+		time.Sleep(800 * time.Millisecond)
+	}
+	return nil, lastErr
 }
 
 // ensureContainerRunningAndWait 负责：

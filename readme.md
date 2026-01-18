@@ -50,8 +50,4 @@ go run ./cmd/k3 cluster create --dir .k3 --nodes 3 --web-port 8080 --storage mem
 CONFIG_PATH=.k3/node-1/.config.yaml go run ./cmd/k3 start
 ```
 
-DNS
-发现所有局域网IP
 
-custom resource
-选择性上报

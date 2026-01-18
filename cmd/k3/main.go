@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,7 +25,10 @@ import (
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/service"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/apiserver"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/parser"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/storage"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func main() {
@@ -41,6 +46,8 @@ func main() {
 		os.Exit(cmdController(os.Args[2:]))
 	case "web":
 		os.Exit(cmdWeb(os.Args[2:]))
+	case "apply":
+		os.Exit(cmdApply(os.Args[2:]))
 	case "cluster":
 		os.Exit(cmdCluster(os.Args[2:]))
 	case "-h", "--help", "help":
@@ -63,6 +70,7 @@ Commands:
   storage               仅启动 storage（包含按需拉起 mysql/etcd 容器）
   controller            启动 storage + controller
   web                   启动 storage + web
+  apply                 将 Kubernetes YAML/JSON 提交到 apiserver（最小 apply 子集）
   cluster create        创建 k3 集群配置骨架（多节点配置文件）
 
 Flags:
@@ -219,6 +227,162 @@ func cmdWeb(args []string) int {
 
 	blockUntilSignal()
 	return 0
+}
+
+func cmdApply(args []string) int {
+	fs := flag.NewFlagSet("k3 apply", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	cfgPath := commonFlags(fs)
+	file := fs.String("f", "", "要提交的 YAML 文件路径（支持多文档 ---）")
+	server := fs.String("server", "", "apiserver 地址（默认从配置读取，例如 http://localhost:8080）")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	applyConfigFlag(*cfgPath)
+
+	if strings.TrimSpace(*file) == "" {
+		fmt.Fprintln(os.Stderr, "缺少 -f <file>")
+		return 2
+	}
+
+	cfg := config.NewFileConfig()
+	base := strings.TrimSpace(*server)
+	if base == "" {
+		base = fmt.Sprintf("http://localhost:%d", cfg.Gin.Port)
+	}
+	base = strings.TrimRight(base, "/")
+
+	p := parser.NewParser()
+	objects, gvks, err := p.ParseYAMLFile(*file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "解析 YAML 失败: %v\n", err)
+		return 1
+	}
+	if len(objects) == 0 {
+		fmt.Fprintln(os.Stderr, "YAML 中没有可提交的资源")
+		return 2
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	for i, obj := range objects {
+		gvk := gvks[i]
+		if gvk == nil {
+			fmt.Fprintf(os.Stderr, "跳过第 %d 个对象：无法解析 GVK\n", i+1)
+			continue
+		}
+		meta, ok := obj.(metav1.Object)
+		if !ok {
+			fmt.Fprintf(os.Stderr, "跳过第 %d 个对象：不支持的对象类型（无 metadata）\n", i+1)
+			continue
+		}
+
+		path, err := apiPathFor(*gvk, meta.GetNamespace())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "跳过 %s/%s：%v\n", gvk.Kind, meta.GetName(), err)
+			continue
+		}
+
+		body, err := parser.ToYAML(obj)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "序列化 %s/%s 失败: %v\n", gvk.Kind, meta.GetName(), err)
+			continue
+		}
+
+		req, err := http.NewRequest(http.MethodPost, base+path, strings.NewReader(string(body)))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "构造请求失败: %v\n", err)
+			return 1
+		}
+		req.Header.Set("Content-Type", "application/yaml")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "提交失败 %s/%s: %v\n", gvk.Kind, meta.GetName(), err)
+			return 1
+		}
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		// 如果已存在，则走一次 PUT（最小化“apply”语义）
+		if resp.StatusCode == http.StatusConflict {
+			updateURL := fmt.Sprintf("%s%s/%s", base, path, meta.GetName())
+			req2, err := http.NewRequest(http.MethodPut, updateURL, strings.NewReader(string(body)))
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "构造更新请求失败: %v\n", err)
+				return 1
+			}
+			req2.Header.Set("Content-Type", "application/yaml")
+
+			resp2, err := client.Do(req2)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "更新失败 %s/%s: %v\n", gvk.Kind, meta.GetName(), err)
+				return 1
+			}
+			respBody2, _ := io.ReadAll(resp2.Body)
+			_ = resp2.Body.Close()
+			if resp2.StatusCode < 200 || resp2.StatusCode >= 300 {
+				fmt.Fprintf(os.Stderr, "更新失败 %s/%s: HTTP %d: %s\n", gvk.Kind, meta.GetName(), resp2.StatusCode, strings.TrimSpace(string(respBody2)))
+				return 1
+			}
+			fmt.Printf("已更新 %s %s/%s\n", gvk.Kind, meta.GetNamespace(), meta.GetName())
+			continue
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			fmt.Fprintf(os.Stderr, "提交失败 %s/%s: HTTP %d: %s\n", gvk.Kind, meta.GetName(), resp.StatusCode, strings.TrimSpace(string(respBody)))
+			return 1
+		}
+
+		fmt.Printf("已提交 %s %s/%s\n", gvk.Kind, meta.GetNamespace(), meta.GetName())
+	}
+
+	return 0
+}
+
+func apiPathFor(gvk schema.GroupVersionKind, namespace string) (string, error) {
+	plural, ok := kindToPlural(gvk.Kind)
+	if !ok {
+		return "", fmt.Errorf("unsupported kind: %s", gvk.Kind)
+	}
+
+	// cluster-scoped
+	if gvk.Kind == "Node" && gvk.Group == "" && gvk.Version == "v1" {
+		return fmt.Sprintf("/api/%s/%s", gvk.Version, plural), nil
+	}
+
+	// namespaced (default to "default")
+	ns := strings.TrimSpace(namespace)
+	if ns == "" {
+		ns = "default"
+	}
+
+	if gvk.Group == "" {
+		return fmt.Sprintf("/api/%s/namespaces/%s/%s", gvk.Version, ns, plural), nil
+	}
+	return fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s", gvk.Group, gvk.Version, ns, plural), nil
+}
+
+func kindToPlural(kind string) (string, bool) {
+	switch kind {
+	case "Pod":
+		return "pods", true
+	case "Service":
+		return "services", true
+	case "ConfigMap":
+		return "configmaps", true
+	case "Secret":
+		return "secrets", true
+	case "Node":
+		return "nodes", true
+	case "Deployment":
+		return "deployments", true
+	case "StatefulSet":
+		return "statefulsets", true
+	case "DaemonSet":
+		return "daemonsets", true
+	default:
+		return "", false
+	}
 }
 
 func cmdCluster(args []string) int {

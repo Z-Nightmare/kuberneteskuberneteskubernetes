@@ -282,7 +282,8 @@ func (s *MySQLStore) Update(gvk schema.GroupVersionKind, obj runtime.Object) err
 	} else {
 		query = query.Where("name = ? AND namespace = ?", name, namespace)
 	}
-	if err := query.Delete(&BaseResource{}).Error; err != nil {
+	// 注意：使用硬删除，避免软删除记录仍占用 UID 唯一索引导致后续 Create/Update 失败。
+	if err := query.Unscoped().Delete(&BaseResource{}).Error; err != nil {
 		return fmt.Errorf("failed to delete old resource: %w", err)
 	}
 
@@ -318,7 +319,8 @@ func (s *MySQLStore) Delete(gvk schema.GroupVersionKind, namespace, name string)
 	} else {
 		query = query.Where("name = ? AND namespace = ?", name, namespace)
 	}
-	if err := query.Delete(&BaseResource{}).Error; err != nil {
+	// 注意：使用硬删除，避免软删除记录仍占用 UID 唯一索引导致后续 Create 失败。
+	if err := query.Unscoped().Delete(&BaseResource{}).Error; err != nil {
 		return fmt.Errorf("failed to delete resource: %w", err)
 	}
 

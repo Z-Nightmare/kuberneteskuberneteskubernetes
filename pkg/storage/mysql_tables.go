@@ -6,25 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"gorm.io/gorm"
 )
 
 // BaseResource 是所有资源表的基础结构
 type BaseResource struct {
-	ID              uint           `gorm:"primaryKey"`
-	Name            string         `gorm:"index;size:255;not null"`
-	Namespace       string         `gorm:"index;size:255"`
-	UID             string         `gorm:"uniqueIndex;size:255"`
-	ResourceVersion string         `gorm:"index;size:255"`
-	Labels          string         `gorm:"type:json"` // JSON 格式存储 labels
-	Annotations     string         `gorm:"type:json"` // JSON 格式存储 annotations
-	CreatedAt       time.Time      `gorm:"index"`
+	ID              uint      `gorm:"primaryKey"`
+	Name            string    `gorm:"index;size:255;not null"`
+	Namespace       string    `gorm:"index;size:255"`
+	UID             string    `gorm:"uniqueIndex;size:255"`
+	ResourceVersion string    `gorm:"index;size:255"`
+	Labels          string    `gorm:"type:json"` // JSON 格式存储 labels
+	Annotations     string    `gorm:"type:json"` // JSON 格式存储 annotations
+	CreatedAt       time.Time `gorm:"index"`
 	UpdatedAt       time.Time
 	DeletedAt       gorm.DeletedAt `gorm:"index"`
 }
@@ -39,13 +39,13 @@ type PodResource struct {
 // DeploymentResource Deployment 资源表
 type DeploymentResource struct {
 	BaseResource
-	Replicas          *int32  `gorm:"type:int"`
-	ReplicasAvailable *int32  `gorm:"type:int"`
-	ReplicasReady     *int32  `gorm:"type:int"`
-	ReplicasUpdated   *int32  `gorm:"type:int"`
-	Strategy          string  `gorm:"size:50"` // RollingUpdate, Recreate
-	Spec              string  `gorm:"type:json"` // DeploymentSpec 的 JSON
-	Status            string  `gorm:"type:json"` // DeploymentStatus 的 JSON
+	Replicas          *int32 `gorm:"type:int"`
+	ReplicasAvailable *int32 `gorm:"type:int"`
+	ReplicasReady     *int32 `gorm:"type:int"`
+	ReplicasUpdated   *int32 `gorm:"type:int"`
+	Strategy          string `gorm:"size:50"`   // RollingUpdate, Recreate
+	Spec              string `gorm:"type:json"` // DeploymentSpec 的 JSON
+	Status            string `gorm:"type:json"` // DeploymentStatus 的 JSON
 }
 
 // ServiceResource Service 资源表
@@ -61,24 +61,24 @@ type ServiceResource struct {
 // ConfigMapResource ConfigMap 资源表
 type ConfigMapResource struct {
 	BaseResource
-	Data      string `gorm:"type:json"` // Data 字段的 JSON
+	Data       string `gorm:"type:json"` // Data 字段的 JSON
 	BinaryData string `gorm:"type:json"` // BinaryData 字段的 JSON
 }
 
 // SecretResource Secret 资源表
 type SecretResource struct {
 	BaseResource
-	Type     string `gorm:"size:50;index"`
-	Data     string `gorm:"type:json"` // Data 字段的 JSON（base64 编码的值）
+	Type       string `gorm:"size:50;index"`
+	Data       string `gorm:"type:json"` // Data 字段的 JSON（base64 编码的值）
 	StringData string `gorm:"type:json"` // StringData 字段的 JSON
 }
 
 // NodeResource Node 资源表
 type NodeResource struct {
 	BaseResource
-	Phase   string `gorm:"size:50;index"` // NodePhase: Pending, Running, Terminated
-	Spec    string `gorm:"type:json"`      // NodeSpec 的 JSON
-	Status  string `gorm:"type:json"`      // NodeStatus 的 JSON
+	Phase  string `gorm:"size:50;index"` // NodePhase: Pending, Running, Terminated
+	Spec   string `gorm:"type:json"`     // NodeSpec 的 JSON
+	Status string `gorm:"type:json"`     // NodeStatus 的 JSON
 }
 
 // tableName 根据 GVK 生成表名
@@ -130,7 +130,7 @@ func getTableModel(gvk schema.GroupVersionKind) interface{} {
 func (s *MySQLStore) ensureTable(gvk schema.GroupVersionKind) error {
 	tableName := tableName(gvk)
 	model := getTableModel(gvk)
-	
+
 	// 检查表是否存在
 	var count int64
 	if err := s.db.Raw("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?", tableName).Scan(&count).Error; err != nil {
@@ -378,7 +378,7 @@ func (s *MySQLStore) saveGenericResource(gvk schema.GroupVersionKind, obj runtim
 	}
 
 	base := toBaseResource(meta)
-	
+
 	// 将整个对象序列化为 JSON 存储在 annotations 中（作为备用）
 	objJSON, _ := json.Marshal(obj)
 	base.Annotations = string(objJSON)
@@ -434,6 +434,12 @@ func (s *MySQLStore) saveNode(node *corev1.Node) error {
 	}
 
 	// 节点不存在，创建新节点
+	// 注意：历史版本曾对资源做软删除，可能导致“查询不到但唯一索引仍占用（UID）”。
+	// 这里做一次 best-effort 的硬删除清理，避免 Duplicate entry。
+	_ = s.db.Table(tableName).
+		Unscoped().
+		Where("name = ? OR uid = ?", node.Name, resource.UID).
+		Delete(&NodeResource{}).Error
 	return s.db.Table(tableName).Create(&resource).Error
 }
 
