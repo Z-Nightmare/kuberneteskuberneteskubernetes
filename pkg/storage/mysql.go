@@ -6,20 +6,20 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"zeusro.com/hermes/internal/core/config"
 	"zeusro.com/hermes/pkg/parser"
 )
 
 // MySQLStore 是基于 MySQL 的存储实现
 type MySQLStore struct {
-	db     *gorm.DB
-	parser *parser.Parser
+	db       *gorm.DB
+	parser   *parser.Parser
 	watchers map[string][]chan ResourceEvent
 }
 
@@ -363,4 +363,16 @@ func (s *MySQLStore) notifyWatchers(gvk schema.GroupVersionKind, namespace strin
 			// 如果通道已满，跳过
 		}
 	}
+}
+
+// Close 关闭 MySQL 连接
+func (s *MySQLStore) Close() error {
+	if s.db == nil {
+		return nil
+	}
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get database instance: %w", err)
+	}
+	return sqlDB.Close()
 }
