@@ -12,5 +12,5 @@ var CoreModule = fx.Options(
 	fx.Provide(logprovider.GetLogger),
 	//todo 集成数据库
 	// fx.Provide(NewDatabase),
-	fx.Provide(webprovider.NewGinEngine),
+	fx.Provide(webprovider.NewFiberEngine),
 )

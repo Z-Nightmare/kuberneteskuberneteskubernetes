@@ -34,7 +34,7 @@ func main() {
 			logger := logprovider.GetLogger()
 			return logger.GetFxLogger()
 		}),
-		fx.Invoke(StartGinServer))
+		fx.Invoke(StartFiberServer))
 	// app.Run()
 	if err := app.Start(context.Background()); err != nil {
 		// logger.Panic("Fx 启动失败: ", err)
@@ -98,11 +98,11 @@ func GracefulShutdown(cleanupFuncs ...func()) {
 	fmt.Println("服务已优雅停机")
 }
 
-func StartGinServer(
+func StartFiberServer(
 	lc fx.Lifecycle,
 	router api.Routes,
 	config config.Config,
-	gin webprovider.MyGinEngine,
+	fiber webprovider.FiberEngine,
 	l logprovider.Logger,
 	// model model.Models,
 	// middlewares middleware.Middlewares
@@ -113,8 +113,8 @@ func StartGinServer(
 			// middlewares.SetUp()
 			router.SetUp()
 			go func() {
-				l.Infof("正在启动gin服务器 http://localhost:%v/translate", config.Gin.Port)
-				err := gin.Gin.Run(fmt.Sprintf(":%v", config.Gin.Port))
+				l.Infof("正在启动Fiber服务器 http://localhost:%v/translate", config.Gin.Port)
+				err := fiber.App.Listen(fmt.Sprintf(":%v", config.Gin.Port))
 				if err != nil {
 					l.Panic("无法启动服务器: ", err.Error())
 					return
@@ -124,7 +124,7 @@ func StartGinServer(
 		},
 		OnStop: func(ctx context.Context) error {
 			l.Info("正在关闭服务器...")
-			return nil
+			return fiber.App.Shutdown()
 		},
 	})
 }

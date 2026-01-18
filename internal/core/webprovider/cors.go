@@ -1,23 +1,22 @@
 package webprovider
 
 import (
-	cors "github.com/rs/cors/wrapper/gin"
-
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"zeusro.com/hermes/internal/core/config"
 	"zeusro.com/hermes/internal/core/logprovider"
 )
 
 type CorsMiddleware struct {
-	gin    MyGinEngine
+	fiber  FiberEngine
 	logger logprovider.Logger
 	config config.Config
 }
 
 func NewCorsMiddleware(logger logprovider.Logger,
-	gin MyGinEngine,
+	fiber FiberEngine,
 	config config.Config) CorsMiddleware {
 	return CorsMiddleware{
-		gin:    gin,
+		fiber:  fiber,
 		logger: logger,
 		config: config,
 	}
@@ -29,13 +28,11 @@ func (m CorsMiddleware) SetUp() {
 		return
 	}
 
-	debug := m.config.Debug
-	m.gin.Gin.Use(cors.New(cors.Options{
+	m.fiber.App.Use(cors.New(cors.Config{
 		AllowCredentials: true,
-		AllowOriginFunc:  func(origin string) bool { return true },
-		AllowedHeaders:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "HEAD", "OPTIONS"},
-		Debug:            debug,
+		AllowOrigins:     "*",
+		AllowHeaders:     "*",
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS",
 	}))
 
 	m.logger.Info("已配置CORS")

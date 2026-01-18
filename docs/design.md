@@ -2,6 +2,8 @@
 
 ## api层
 
+api server。
+
 ## 控制器
 
 - scheduler
@@ -9,7 +11,9 @@
 - proxy
 - container runtime
 
-控制器包含了原始kubernetes中的最小实现。
+控制器包含了原始kubernetes中控制单元的最小实现。
+
+启动控制器之后，会将当前节点上报，并存储到 node 单元。
 
 ## 存储
 

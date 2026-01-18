@@ -43,6 +43,9 @@ type GinConfig struct {
 	CORS bool `mapstructure:"cors"`
 }
 
+// WebConfig is an alias for GinConfig for backward compatibility
+type WebConfig = GinConfig
+
 type LogConfig struct {
 	Path  string `mapstructure:"path"`
 	Level string `mapstructure:"level"`

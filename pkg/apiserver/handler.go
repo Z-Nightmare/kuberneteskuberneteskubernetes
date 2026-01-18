@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -48,9 +46,9 @@ type WatchOptions struct {
 	TimeoutSeconds      *int64
 }
 
-// parseGVKFromContext 从 Gin context 解析 GroupVersionKind
-func parseGVKFromContext(c *gin.Context) (schema.GroupVersionKind, error) {
-	path := c.Request.URL.Path
+// parseGVKFromContext 从 Fiber context 解析 GroupVersionKind
+func parseGVKFromContext(c *fiber.Ctx) (schema.GroupVersionKind, error) {
+	path := c.Path()
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 
 	if len(parts) < 3 {
@@ -101,44 +99,39 @@ func parseGVKFromContext(c *gin.Context) (schema.GroupVersionKind, error) {
 }
 
 // HandleGet 处理 GET 请求（获取单个资源）
-func (s *APIServer) HandleGet(c *gin.Context) {
+func (s *APIServer) HandleGet(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+	namespace := c.Params("namespace")
+	name := c.Params("name")
 
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "resource name is required"})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "resource name is required"})
 	}
 
 	obj, err := s.store.Get(gvk, namespace, name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	c.JSON(http.StatusOK, obj)
+	return c.Status(fiber.StatusOK).JSON(obj)
 }
 
 // HandleList 处理 GET 请求（列出资源）
-func (s *APIServer) HandleList(c *gin.Context) {
+func (s *APIServer) HandleList(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	namespace := c.Param("namespace")
+	namespace := c.Params("namespace")
 
 	objects, err := s.store.List(gvk, namespace)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 构建 List 响应
@@ -158,122 +151,106 @@ func (s *APIServer) HandleList(c *gin.Context) {
 		list.Items = append(list.Items, runtime.RawExtension{Raw: data})
 	}
 
-	c.JSON(http.StatusOK, list)
+	return c.Status(fiber.StatusOK).JSON(list)
 }
 
 // HandleCreate 处理 POST 请求（创建资源）
-func (s *APIServer) HandleCreate(c *gin.Context) {
+func (s *APIServer) HandleCreate(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var body map[string]interface{}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 将 JSON 转换为 YAML 格式的字节
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 使用 parser 解析对象
 	obj, _, err := s.parser.ParseYAML(bodyBytes)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 创建资源
 	if err := s.store.Create(gvk, obj); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	c.JSON(http.StatusCreated, obj)
+	return c.Status(fiber.StatusCreated).JSON(obj)
 }
 
 // HandleUpdate 处理 PUT 请求（更新资源）
-func (s *APIServer) HandleUpdate(c *gin.Context) {
+func (s *APIServer) HandleUpdate(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var body map[string]interface{}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	obj, _, err := s.parser.ParseYAML(bodyBytes)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 更新资源
 	if err := s.store.Update(gvk, obj); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	c.JSON(http.StatusOK, obj)
+	return c.Status(fiber.StatusOK).JSON(obj)
 }
 
 // HandlePatch 处理 PATCH 请求（部分更新资源）
-func (s *APIServer) HandlePatch(c *gin.Context) {
+func (s *APIServer) HandlePatch(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+	namespace := c.Params("namespace")
+	name := c.Params("name")
 
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "resource name is required"})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "resource name is required"})
 	}
 
 	// 获取现有资源
 	obj, err := s.store.Get(gvk, namespace, name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 解析 patch 数据
 	var patchData map[string]interface{}
-	if err := c.ShouldBindJSON(&patchData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if err := c.BodyParser(&patchData); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 简单的 merge patch 实现
 	objBytes, err := json.Marshal(obj)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var objMap map[string]interface{}
 	if err := json.Unmarshal(objBytes, &objMap); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 合并 patch
@@ -282,23 +259,20 @@ func (s *APIServer) HandlePatch(c *gin.Context) {
 	// 转换回对象
 	mergedBytes, err := json.Marshal(objMap)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	patchedObj, _, err := s.parser.ParseYAML(mergedBytes)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 更新资源
 	if err := s.store.Update(gvk, patchedObj); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	c.JSON(http.StatusOK, patchedObj)
+	return c.Status(fiber.StatusOK).JSON(patchedObj)
 }
 
 // mergePatch 合并 patch 数据
@@ -319,60 +293,54 @@ func mergePatch(dst, src map[string]interface{}) {
 }
 
 // HandleDelete 处理 DELETE 请求（删除资源）
-func (s *APIServer) HandleDelete(c *gin.Context) {
+func (s *APIServer) HandleDelete(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+	namespace := c.Params("namespace")
+	name := c.Params("name")
 
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "resource name is required"})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "resource name is required"})
 	}
 
 	// 获取资源（用于返回）
 	obj, err := s.store.Get(gvk, namespace, name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 删除资源
 	if err := s.store.Delete(gvk, namespace, name); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 返回删除的对象
-	c.JSON(http.StatusOK, obj)
+	return c.Status(fiber.StatusOK).JSON(obj)
 }
 
 // HandleWatch 处理 WATCH 请求（监听资源变更）
-func (s *APIServer) HandleWatch(c *gin.Context) {
+func (s *APIServer) HandleWatch(c *fiber.Ctx) error {
 	gvk, err := parseGVKFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	namespace := c.Param("namespace")
+	namespace := c.Params("namespace")
 	resourceVersion := c.Query("resourceVersion")
 
 	// 设置 Server-Sent Events 响应头
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("X-Accel-Buffering", "no") // 禁用 nginx 缓冲
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no") // 禁用 nginx 缓冲
 
 	// 创建 watch channel
 	eventCh, err := s.store.Watch(gvk, namespace, resourceVersion)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	// 设置超时（可选）
@@ -385,25 +353,28 @@ func (s *APIServer) HandleWatch(c *gin.Context) {
 	}
 
 	// 创建 context with timeout
-	ctx := c.Request.Context()
+	reqCtx := c.UserContext()
 	if timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		reqCtx, cancel = context.WithTimeout(reqCtx, timeout)
 		defer cancel()
 	}
 
 	// 发送初始事件（BOOKMARK）
-	sendSSE(c.Writer, watch.Event{
+	initialEvent := watch.Event{
 		Type:   watch.Bookmark,
 		Object: &metav1.Status{},
-	})
+	}
+	if err := sendSSEFiber(c, initialEvent); err != nil {
+		return err
+	}
 
 	// 流式发送事件
-	c.Stream(func(w io.Writer) bool {
+	for {
 		select {
 		case event, ok := <-eventCh:
 			if !ok {
-				return false
+				return nil
 			}
 
 			// 转换事件类型
@@ -427,33 +398,29 @@ func (s *APIServer) HandleWatch(c *gin.Context) {
 				Object: event.Object,
 			}
 
-			if !sendSSE(w, watchEvent) {
-				return false
+			if err := sendSSEFiber(c, watchEvent); err != nil {
+				return err
 			}
-			return true
 
-		case <-ctx.Done():
-			return false
+		case <-reqCtx.Done():
+			return nil
 		}
-	})
+	}
 }
 
-// sendSSE 发送 Server-Sent Event
-func sendSSE(w io.Writer, event watch.Event) bool {
+// sendSSEFiber 发送 Server-Sent Event (Fiber版本)
+func sendSSEFiber(c *fiber.Ctx, event watch.Event) error {
 	data, err := json.Marshal(event)
 	if err != nil {
-		return false
+		return err
 	}
 
 	// SSE 格式: data: {json}\n\n
-	_, err = fmt.Fprintf(w, "data: %s\n\n", string(data))
+	_, err = fmt.Fprintf(c, "data: %s\n\n", string(data))
 	if err != nil {
-		return false
+		return err
 	}
 
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
-	}
-
-	return true
+	// Fiber 会自动处理刷新
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"zeusro.com/hermes/function/web/translate"
 	"zeusro.com/hermes/function/web/translate/model"
@@ -16,17 +16,17 @@ import (
 	baseModel "zeusro.com/hermes/model"
 )
 
-func NewTranslateService(gin webprovider.MyGinEngine, l logprovider.Logger,
+func NewTranslateService(fiber webprovider.FiberEngine, l logprovider.Logger,
 	config config.Config) TranslateService {
 	return TranslateService{
-		gin:    gin,
+		fiber:  fiber,
 		l:      l,
 		config: config,
 	}
 }
 
 type TranslateService struct {
-	gin    webprovider.MyGinEngine
+	fiber  webprovider.FiberEngine
 	l      logprovider.Logger
 	config config.Config
 }
@@ -44,26 +44,26 @@ func exportResponseToFile(lang string, response baseModel.APIResponse) error {
 }
 
 // Translate 多种语言长文本翻译时可以选择触发
-func (s TranslateService) Translate(ctx *gin.Context) {
+func (s TranslateService) Translate(c *fiber.Ctx) error {
 	start := time.Now()
 	var request model.TranslateRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
+	if err := c.BodyParser(&request); err != nil {
 		// 参数校验失败
-		ctx.JSON(400, gin.H{
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
-		return
 	}
 	city := request.Location.GuessCity(s.config.Cities, s.config.MinimumDeviationDistance)
 	if city == nil {
 		response := baseModel.NewErrorAPIResponse(time.Since(start), "无法识别城市")
-		ctx.AbortWithStatusJSON(response.Code, response)
-		return
+		return c.Status(response.Code).JSON(response)
 	}
 	err := godotenv.Load("../../.env")
 	if err != nil {
 		s.l.Errorf("加载环境变量失败：%v", err)
-		return
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "加载环境变量失败",
+		})
 	}
 	format := s.config.OutputFormat
 	responses := make([]baseModel.APIResponse, 0)
@@ -72,8 +72,7 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 		// 调用实际的翻译服务
 		//console模式选择一次性翻译全部
 		responses, code = s.doTranslate(request.Text, city.Language, start)
-		ctx.AbortWithStatusJSON(code, responses)
-		return
+		return c.Status(code).JSON(responses)
 	}
 	//非console模式选择多语言并发翻译
 	for _, language := range city.Language {
@@ -96,7 +95,7 @@ func (s TranslateService) Translate(ctx *gin.Context) {
 		}(language, &wg)
 		wg.Wait()
 	}
-	ctx.AbortWithStatusJSON(code, responses)
+	return c.Status(code).JSON(responses)
 }
 
 func (s TranslateService) doTranslate(text string, languages []string, start time.Time) ([]baseModel.APIResponse, int) {
