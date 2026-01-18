@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web/translate/model"
 	"github.com/spf13/viper"
@@ -81,6 +82,12 @@ func NewFileConfig() Config {
 	// 允许通过环境变量覆盖配置路径（便于 cmd/k3 之类的 CLI 管理多实例/多配置）
 	if p := os.Getenv("CONFIG_PATH"); p != "" {
 		configPath = p
+	}
+	// 如果默认配置不存在，则回退到示例配置，保证开箱可运行（尤其是 cmd/web 看板）
+	if _, err := os.Stat(configPath); err != nil {
+		if _, err2 := os.Stat(filepath.Join("configs", "config-example.yaml")); err2 == nil {
+			configPath = filepath.Join("configs", "config-example.yaml")
+		}
 	}
 
 	viper.SetConfigType("yaml")

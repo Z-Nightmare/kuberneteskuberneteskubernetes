@@ -14,12 +14,15 @@ func (r Routes) SetUp() {
 	}
 }
 
-func NewRoutes(indexRoutes IndexRoutes) Routes {
+func NewRoutes(indexRoutes IndexRoutes, dashboardRoutes DashboardRoutes) Routes {
 	return Routes{
 		indexRoutes,
+		dashboardRoutes,
 	}
 }
 
 var Modules = fx.Options(
 	fx.Provide(NewIndexRoutes),
-	fx.Provide(NewRoutes))
+	DashboardModule,
+	fx.Provide(NewRoutes),
+)

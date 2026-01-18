@@ -13,11 +13,11 @@
 *.out
 
 # Go build artifacts
-web
-gin-server
-hermes
-kuberneteskuberneteskubernetes
-controller
+/web
+/gin-server
+/hermes
+/kuberneteskuberneteskubernetes
+/controller
 cmd/controller/controller
 cmd/apiserver/web
 cmd/apiserver/gin-server

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>K3 Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="mx-auto max-w-6xl px-4 py-8">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="text-sm text-slate-400">K3 / Resources</div>
+          <h1 class="text-2xl font-semibold tracking-tight">Nodes & Pods 实时看板</h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+            <span class="text-slate-400">WS</span>
+            <span id="wsStatus" class="ml-1 font-medium text-slate-200">connecting...</span>
+          </div>
+          <div class="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+            <span class="text-slate-400">Updated</span>
+            <span id="updatedAt" class="ml-1 font-medium text-slate-200">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="text-sm text-slate-400">Nodes</div>
+          <div class="mt-1 text-2xl font-semibold" id="nodesCount">0</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="text-sm text-slate-400">Pods</div>
+          <div class="mt-1 text-2xl font-semibold" id="podsCount">0</div>
+        </div>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section class="rounded-xl border border-slate-800 bg-slate-900/40">
+          <div class="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+            <h2 class="font-medium">Nodes</h2>
+            <div class="text-xs text-slate-400">来自 Store 的 Node 资源</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-xs uppercase text-slate-400">
+                <tr class="border-b border-slate-800">
+                  <th class="px-4 py-3">Name</th>
+                  <th class="px-4 py-3">Ready</th>
+                  <th class="px-4 py-3">Phase</th>
+                </tr>
+              </thead>
+              <tbody id="nodesTbody" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-slate-800 bg-slate-900/40">
+          <div class="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+            <h2 class="font-medium">Pods</h2>
+            <div class="text-xs text-slate-400">来自 Store 的 Pod 资源</div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-xs uppercase text-slate-400">
+                <tr class="border-b border-slate-800">
+                  <th class="px-4 py-3">Namespace</th>
+                  <th class="px-4 py-3">Name</th>
+                  <th class="px-4 py-3">Node</th>
+                  <th class="px-4 py-3">Phase</th>
+                  <th class="px-4 py-3">Ready</th>
+                  <th class="px-4 py-3">Restarts</th>
+                </tr>
+              </thead>
+              <tbody id="podsTbody" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="mt-8 text-xs text-slate-500">
+        <div>
+          - 前端样式：Tailwind CSS（见 `https://github.com/tailwindlabs/tailwindcss`）
+        </div>
+        <div class="mt-1">
+          - 数据来源：WebSocket `GET /ws/resources`（服务端监听 `store.Watch(Node/Pod)` 并推送快照）
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function badge(ok, text) {
+        const color = ok
+          ? "bg-emerald-500/15 text-emerald-200 border-emerald-500/30"
+          : "bg-rose-500/15 text-rose-200 border-rose-500/30";
+        return `<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${color}">${text}</span>`;
+      }
+
+      function pill(kind) {
+        const map = {
+          Running: "bg-emerald-500/15 text-emerald-200 border-emerald-500/30",
+          Pending: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+          Failed: "bg-rose-500/15 text-rose-200 border-rose-500/30",
+          Succeeded: "bg-sky-500/15 text-sky-200 border-sky-500/30",
+        };
+        const cls = map[kind] || "bg-slate-500/15 text-slate-200 border-slate-500/30";
+        return `<span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${cls}">${kind || "-"}</span>`;
+      }
+
+      function render(snapshot) {
+        $("nodesCount").textContent = snapshot?.counts?.nodes ?? 0;
+        $("podsCount").textContent = snapshot?.counts?.pods ?? 0;
+        $("updatedAt").textContent = snapshot?.generatedAt
+          ? new Date(snapshot.generatedAt).toLocaleTimeString()
+          : "-";
+
+        const nodes = Array.isArray(snapshot.nodes) ? snapshot.nodes : [];
+        const pods = Array.isArray(snapshot.pods) ? snapshot.pods : [];
+
+        $("nodesTbody").innerHTML =
+          nodes
+            .slice()
+            .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+            .map((n) => {
+              return `
+                <tr>
+                  <td class="px-4 py-3 font-medium">${n.name || "-"}</td>
+                  <td class="px-4 py-3">${badge(!!n.ready, n.ready ? "Ready" : "NotReady")}</td>
+                  <td class="px-4 py-3">${pill(n.phase)}</td>
+                </tr>`;
+            })
+            .join("") || `<tr><td class="px-4 py-6 text-slate-500" colspan="3">暂无数据</td></tr>`;
+
+        $("podsTbody").innerHTML =
+          pods
+            .slice()
+            .sort((a, b) => `${a.namespace}/${a.name}`.localeCompare(`${b.namespace}/${b.name}`))
+            .map((p) => {
+              return `
+                <tr>
+                  <td class="px-4 py-3">${p.namespace || "-"}</td>
+                  <td class="px-4 py-3 font-medium">${p.name || "-"}</td>
+                  <td class="px-4 py-3">${p.nodeName || "-"}</td>
+                  <td class="px-4 py-3">${pill(p.phase)}</td>
+                  <td class="px-4 py-3">${badge(!!p.ready, p.ready ? "Ready" : "NotReady")}</td>
+                  <td class="px-4 py-3">${Number.isFinite(p.restarts) ? p.restarts : "-"}</td>
+                </tr>`;
+            })
+            .join("") || `<tr><td class="px-4 py-6 text-slate-500" colspan="6">暂无数据</td></tr>`;
+      }
+
+      function connect() {
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        const url = `${proto}//${location.host}/ws/resources`;
+        const ws = new WebSocket(url);
+
+        ws.addEventListener("open", () => {
+          $("wsStatus").textContent = "connected";
+          $("wsStatus").className = "ml-1 font-medium text-emerald-200";
+        });
+        ws.addEventListener("close", () => {
+          $("wsStatus").textContent = "disconnected";
+          $("wsStatus").className = "ml-1 font-medium text-rose-200";
+          setTimeout(connect, 1000);
+        });
+        ws.addEventListener("error", () => {
+          $("wsStatus").textContent = "error";
+          $("wsStatus").className = "ml-1 font-medium text-rose-200";
+        });
+        ws.addEventListener("message", (ev) => {
+          try {
+            const data = JSON.parse(ev.data);
+            if (data && data.type === "snapshot") {
+              render(data);
+            }
+          } catch (e) {
+            // ignore
+          }
+        });
+      }
+
+      connect();
+    </script>
+  </body>
+</html>
+

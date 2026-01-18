@@ -1,0 +1,33 @@
+debug: true
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  path: ""
+  level: debug
+
+storage:
+  type: memory
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+jwt:
+  signing_key: secret
+
+minimum_deviation_distance: 666
+output: console
+cities: []
