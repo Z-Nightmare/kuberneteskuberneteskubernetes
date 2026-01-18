@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Consul 服务注册中心
+  consul:
+    image: consul:latest
+    container_name: consul
+    ports:
+      - "8500:8500"
+    command: consul agent -dev -client=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8500/v1/status/leader"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # etcd 存储后端（可选，也可以使用 MySQL）
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd
+    ports:
+      - "2379:2379"
+    environment:
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Discovery 服务
+  discovery:
+    build:
+      context: .
+      dockerfile: deploy/docker/discovery/Dockerfile
+    container_name: k3-discovery
+    depends_on:
+      consul:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+    environment:
+      - NODE_NAME=node-1
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      - ./cmd/discovery/config-example.yaml:/app/config.yaml
+    ports:
+      - "7946:7946"
+    command:
+      - --consul-addr
+      - consul:8500
+      - --service-name
+      - k3-node
+      - --node-name
+      - node-1
+      - --config
+      - /app/config.yaml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7946/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

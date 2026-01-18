@@ -1,0 +1,76 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.bin
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go build artifacts - 忽略所有二进制文件
+# 根目录下的二进制文件（无扩展名的可执行文件）
+/controller
+/discovery
+/network
+/storage
+/web
+/k3
+/apiserver
+/gin-server
+/hermes
+/kuberneteskuberneteskubernetes
+/app
+
+# cmd 目录下的二进制文件
+cmd/*/controller
+cmd/*/discovery
+cmd/*/network
+cmd/*/storage
+cmd/*/web
+cmd/*/k3
+cmd/*/apiserver
+cmd/*/gin-server
+cmd/*/hermes
+cmd/controller/controller
+cmd/apiserver/web
+cmd/apiserver/gin-server
+cmd/apiserver/hermes
+cmd/apiserver/__debug_bin*
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+*.log
+
+# mac
+.DS_Store
+
+# project
+config.yaml
+app
+.config.yaml
+cmd/apiserver/__debug_bin*
+.env
+
+output/
+
+# Build directories
+dist/
+build/
+bin/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp

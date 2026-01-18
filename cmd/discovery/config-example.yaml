@@ -1,0 +1,32 @@
+# cmd/discovery config example
+#
+# 用途：
+# - go run ./cmd/discovery --config <path>
+#
+# 说明：
+# - discovery 模块主要通过命令行参数控制（--consul-addr/--service-name/--node-name 等）
+# - 该配置文件主要用于连接共享的 storage（mysql/etcd）以写入/读取 Node
+
+debug: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: etcd    # 建议使用 etcd/mysql 以便多节点共享；memory 仅进程内可见
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+      # Docker Compose 中使用: http://etcd:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""

@@ -1,0 +1,53 @@
+# 全局配置示例（configs/config-example.yaml）
+#
+# 适用模块：
+# - cmd/k3（start/storage/controller/web）
+# - cmd/web（storage + controller + web）
+# - cmd/apiserver（web + apiserver 路由 + translate + dashboard）
+# - cmd/controller（controller）
+# - cmd/storage（storage）
+# - cmd/network（network：主要靠命令行参数；本配置用于连接 storage）
+#
+# 备注：
+# - 各 cmd 目录下也有更“贴近单模块”的 config-example.yaml，可按需参考
+# - 节点名可通过环境变量 NODE_NAME 指定（否则使用 hostname）
+# - 翻译接口依赖环境变量 DEEPSEEK_API_KEY（通常在 .env 里）
+
+debug: true
+
+# web（Fiber）
+web:
+  port: 8080
+  cors: true
+
+# log（zap）
+log:
+  level: debug   # debug/info/warn/error/fatal
+  path: ""       # 非 debug 模式下可输出到文件，例如 logs/app.log
+
+# storage（共享状态：推荐 etcd/mysql；memory 仅进程内）
+storage:
+  type: memory   # memory/mysql/etcd
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+# jwt（当前 middleware 未默认启用，但保留配置项）
+jwt:
+  signing_key: secret
+
+# translate service configs（cmd/web、cmd/apiserver 会用到）
+minimum_deviation_distance: 666
+output: console
+cities: []

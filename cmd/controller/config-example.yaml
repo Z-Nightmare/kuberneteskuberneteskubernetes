@@ -1,0 +1,33 @@
+# cmd/controller config example
+#
+# 用途：
+# - go run ./cmd/controller
+# - 或通过环境变量 CONFIG_PATH 指定此文件
+#
+# 说明：
+# - controller 依赖 storage（memory/mysql/etcd）
+# - 节点名可通过环境变量 NODE_NAME 指定（否则使用 hostname）
+
+debug: true
+
+log:
+  level: debug   # debug/info/warn/error/fatal
+  path: ""       # 非 debug 模式下可输出到文件，例如 logs/controller.log
+
+storage:
+  type: memory   # memory/mysql/etcd
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: worker-node-1
+  labels:
+    kubernetes.io/hostname: worker-node-1
+    node-role.kubernetes.io/worker: ""
+    zone: us-west-1a
+spec:
+  # Node 的 spec 通常由 kubelet 自动管理
+  # 这里仅作为示例展示基本结构
+status:
+  phase: Running
+  conditions:
+    - type: Ready
+      status: "True"
+      lastHeartbeatTime: "2026-01-18T09:00:00Z"
+      lastTransitionTime: "2026-01-18T09:00:00Z"
+      reason: KubeletReady
+      message: kubelet is posting ready status
+  addresses:
+    - type: InternalIP
+      address: "192.168.1.10"
+    - type: Hostname
+      address: "worker-node-1"
