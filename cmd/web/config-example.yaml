@@ -1,0 +1,45 @@
+# cmd/web config example
+#
+# 用途：
+# - go run ./cmd/web
+# - 该模块会启动：storage + controller + web（dashboard + apiserver 路由）
+#
+# 说明：
+# - 节点名可通过环境变量 NODE_NAME 指定（否则使用 hostname）
+# - 翻译接口依赖环境变量 DEEPSEEK_API_KEY（通常在 .env 里）
+
+debug: true
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: memory   # memory/mysql/etcd（多节点共享请用 mysql/etcd）
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+jwt:
+  signing_key: secret
+
+# translate service configs
+minimum_deviation_distance: 666
+output: console
+cities: []
+

@@ -1,0 +1,45 @@
+# cmd/apiserver config example
+#
+# 用途：
+# - go run ./cmd/apiserver
+# - 启动 translate 页面 + /translate API + dashboard 路由 + kubernetes-like API 路由
+#
+# 说明：
+# - 翻译接口依赖环境变量 DEEPSEEK_API_KEY（通常在 .env 里）
+# - 静态资源目录可通过 STATIC_DIR 环境变量覆盖
+
+debug: true
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: memory   # memory/mysql/etcd
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 10
+    max_idle_conns: 5
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+jwt:
+  signing_key: secret
+
+# translate service configs
+minimum_deviation_distance: 666
+output: console
+cities: []
+

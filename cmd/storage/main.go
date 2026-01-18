@@ -62,14 +62,16 @@ func GracefulShutdown(cleanupFuncs ...func()) {
 
 	tasks := []func(context.Context){}
 	for i, cleanFn := range cleanupFuncs {
+		idx := i + 1
+		fn := cleanFn
 		tasks = append(tasks, func(ctx context.Context) {
 			defer wg.Done()
-			cleanFn()
+			fn()
 			select {
 			case <-ctx.Done():
-				fmt.Printf("清理任务 %d 超时/取消\n", i+1)
+				fmt.Printf("清理任务 %d 超时/取消\n", idx)
 			default:
-				fmt.Printf("清理任务 %d 完成\n", i+1)
+				fmt.Printf("清理任务 %d 完成\n", idx)
 			}
 		})
 	}
