@@ -13,9 +13,12 @@ import (
 func TestCallDeepSeek(t *testing.T) {
 	err := godotenv.Load("../../.env")
 	if err != nil {
-		t.Fatalf("加载环境变量失败：%v", err)
+		t.Skipf("未找到 .env，跳过 DeepSeek 集成测试：%v", err)
 	}
 	apiKey := os.Getenv("DEEPSEEK_API_KEY")
+	if apiKey == "" {
+		t.Skip("未设置 DEEPSEEK_API_KEY，跳过 DeepSeek 集成测试")
+	}
 	start := time.Now()
 	var w sync.WaitGroup
 	w.Add(1)

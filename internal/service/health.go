@@ -1,10 +1,10 @@
 package service
 
 import (
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
 	"github.com/gofiber/fiber/v2"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
-	"zeusro.com/hermes/internal/core/webprovider"
 )
 
 func NewHealthService(fiber webprovider.FiberEngine, l logprovider.Logger,

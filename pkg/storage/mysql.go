@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/parser"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	appsv1 "k8s.io/api/apps/v1"
@@ -12,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/pkg/parser"
 )
 
 // MySQLStore 是基于 MySQL 的存储实现

@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"zeusro.com/hermes/internal/core/webprovider"
-	"zeusro.com/hermes/pkg/storage"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/storage"
 )
 
 // RegisterRoutes 注册 Kubernetes API server 路由

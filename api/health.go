@@ -1,10 +1,10 @@
 package api
 
 import (
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/service"
 	"github.com/gofiber/fiber/v2"
-	"zeusro.com/hermes/internal/core/logprovider"
-	"zeusro.com/hermes/internal/core/webprovider"
-	"zeusro.com/hermes/internal/service"
 )
 
 type IndexRoutes struct {

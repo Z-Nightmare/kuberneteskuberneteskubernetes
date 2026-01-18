@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
 )
 
 var (

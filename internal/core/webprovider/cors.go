@@ -1,9 +1,9 @@
 package webprovider
 
 import (
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
 )
 
 type CorsMiddleware struct {

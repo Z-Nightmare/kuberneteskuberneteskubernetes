@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	gormlogger "gorm.io/gorm/logger"
-	"zeusro.com/hermes/internal/core/config"
 )
 
 // Logger structure

@@ -4,12 +4,12 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
-	"zeusro.com/hermes/internal/middleware"
 )
 
 // FiberEngine wraps Fiber app and API router group

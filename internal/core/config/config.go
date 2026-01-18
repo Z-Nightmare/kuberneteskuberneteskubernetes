@@ -3,8 +3,8 @@ package config
 import (
 	"log"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web/translate/model"
 	"github.com/spf13/viper"
-	"zeusro.com/hermes/function/web/translate/model"
 )
 
 var configPath string = ".config.yaml"
@@ -24,14 +24,14 @@ func init() {
 }
 
 type Config struct {
-	Debug                    bool         `mapstructure:"debug"`
-	Gin                      GinConfig    `mapstructure:"web"`
-	Log                      LogConfig    `mapstructure:"log"`
-	JWT                      JWT          `mapstructure:"jwt"`
+	Debug                    bool          `mapstructure:"debug"`
+	Gin                      GinConfig     `mapstructure:"web"`
+	Log                      LogConfig     `mapstructure:"log"`
+	JWT                      JWT           `mapstructure:"jwt"`
 	Storage                  StorageConfig `mapstructure:"storage"`
-	Cities                   []model.City `yaml:"cities"`
-	MinimumDeviationDistance float64      `mapstructure:"minimum_deviation_distance"` // 最小偏差距离
-	OutputFormat             string       `mapstructure:"output"`                     // 输出形式
+	Cities                   []model.City  `yaml:"cities"`
+	MinimumDeviationDistance float64       `mapstructure:"minimum_deviation_distance"` // 最小偏差距离
+	OutputFormat             string        `mapstructure:"output"`                     // 输出形式
 }
 
 type JWT struct {

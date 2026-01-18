@@ -1,10 +1,10 @@
 package core
 
 import (
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
 	"go.uber.org/fx"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
-	"zeusro.com/hermes/internal/core/webprovider"
 )
 
 var CoreModule = fx.Options(

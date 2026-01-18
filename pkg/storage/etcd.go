@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/parser"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/pkg/parser"
 )
 
 // EtcdStore 是基于 etcd 的存储实现

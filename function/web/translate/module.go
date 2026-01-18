@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"zeusro.com/hermes/function/web"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web"
 )
 
 type Translator interface {

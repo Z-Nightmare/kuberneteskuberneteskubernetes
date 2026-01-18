@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"zeusro.com/hermes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
 )
 
 // NewStore 根据配置创建存储实例

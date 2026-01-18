@@ -1,4 +1,4 @@
-module zeusro.com/hermes
+module github.com/Z-Nightmare/kuberneteskuberneteskubernetes
 
 go 1.25.0
 

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/parser"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/storage"
 	"github.com/gofiber/fiber/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
-	"zeusro.com/hermes/pkg/parser"
-	"zeusro.com/hermes/pkg/storage"
 )
 
 // APIServer 是 Kubernetes API server 的实现

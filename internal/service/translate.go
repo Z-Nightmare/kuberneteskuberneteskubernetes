@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web/translate"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/function/web/translate/model"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
+	baseModel "github.com/Z-Nightmare/kuberneteskuberneteskubernetes/model"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
-	"zeusro.com/hermes/function/web/translate"
-	"zeusro.com/hermes/function/web/translate/model"
-	"zeusro.com/hermes/internal/core/config"
-	"zeusro.com/hermes/internal/core/logprovider"
-	"zeusro.com/hermes/internal/core/webprovider"
-	baseModel "zeusro.com/hermes/model"
 )
 
 func NewTranslateService(fiber webprovider.FiberEngine, l logprovider.Logger,
