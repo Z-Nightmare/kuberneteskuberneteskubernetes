@@ -63,6 +63,43 @@ go run ./cmd/network
 go run ./cmd/network --config .config.yaml
 ```
 
+## 一次性导出（export）
+
+`export` 子命令会以 **邻居表导出（ARP/neighbor table）** 的方式导出设备信息：
+
+- 默认自动从本机网卡读取 IPv4 网段（也可以用 `--cidr` 手动指定用于过滤）
+- 读取系统的 **ARP/neighbor 表**，导出其中“已被系统学到”的邻居 IP
+- 设备名称（best-effort）：
+  - 优先使用 ARP 输出里的 host token（若存在）
+  - 否则可选进行反向 DNS（`--resolve-dns`）
+  - 若仍为空，则用 MAC（来自 ARP/neighbor 表）作为兜底标识
+
+> 注意：由于不做主动探测/扫描，若设备从未与本机发生二层通信，系统 ARP 表里可能没有它（结果会比路由器“在线列表”少）。
+
+### 导出为 JSON（打印到 stdout）
+
+```bash
+go run ./cmd/network export --timeout 15s --format json
+```
+
+### 导出为 YAML（写入文件）
+
+```bash
+go run ./cmd/network export --timeout 15s --format yaml --output lan-devices.yaml
+```
+
+### 以命令行列表形式输出（每行：ip 设备名 mac）
+
+```bash
+go run ./cmd/network export --timeout 15s --format cmd
+```
+
+### 指定过滤网段（CIDR）
+
+```bash
+go run ./cmd/network export --cidr 192.168.1.0/24 --timeout 15s
+```
+
 ## 参数说明
 
 - `--config <path>`：配置文件路径（等价于环境变量 `CONFIG_PATH`），用于连接 store（etcd/mysql/memory）
@@ -72,6 +109,15 @@ go run ./cmd/network --config .config.yaml
 - `--node-name <name>`：本机节点名（默认取 `NODE_NAME` 环境变量，否则 hostname）
 - `--peer-ttl <duration>`：peer 过期时间（默认 90s；超时标记 NotReady）
 - `--register-self`：是否也把本机注册为 Node（默认 true；若 controller 已上报该节点，不会覆盖）
+
+### export 专用参数
+
+- `export --cidr <CIDR>`：指定过滤网段（可重复）；不指定则自动从网卡读取
+- `export --timeout <duration>`：导出超时时间（默认 15s）
+- `export --format <json|yaml|cmd>`：输出格式（默认 json；`cmd` 为每行 `ip name mac`)
+- `export --output <path>`：输出文件路径（默认 stdout）
+- `export --resolve-dns <bool>`：是否反向解析设备名称（默认 true）
+- `export --dns-timeout <duration>`：反向解析超时（默认 250ms）
 
 ## 注意事项
 

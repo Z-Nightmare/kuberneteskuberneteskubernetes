@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -20,6 +21,30 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "export":
+			os.Exit(runExport(os.Args[2:]))
+		case "help", "-h", "--help":
+			printUsage(os.Stdout)
+			return
+		}
+	}
+
+	os.Exit(runDaemon(os.Args[1:]))
+}
+
+func printUsage(w io.Writer) {
+	_, _ = fmt.Fprintln(w, "Usage:")
+	_, _ = fmt.Fprintln(w, "  network [flags]              以守护进程方式运行（默认）")
+	_, _ = fmt.Fprintln(w, "  network export [flags]       一次性导出局域网邻居表（IP+名称，best-effort）")
+	_, _ = fmt.Fprintln(w, "")
+	_, _ = fmt.Fprintln(w, "Examples:")
+	_, _ = fmt.Fprintln(w, "  go run ./cmd/network")
+	_, _ = fmt.Fprintln(w, "  go run ./cmd/network export --timeout 5s --format json")
+}
+
+func runDaemon(args []string) int {
 	fs := flag.NewFlagSet("network", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 
@@ -31,8 +56,8 @@ func main() {
 	peerTTL := fs.Duration("peer-ttl", 90*time.Second, "peer 过期时间（超过则标记 NotReady）")
 	registerSelf := fs.Bool("register-self", true, "同时把当前节点也注册到 store（若 controller 已上报该节点，则不会覆盖）")
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		os.Exit(2)
+	if err := fs.Parse(args); err != nil {
+		return 2
 	}
 	applyConfigFlag(*cfgPath)
 
@@ -65,11 +90,12 @@ func main() {
 
 	if err := app.Start(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "network 启动失败: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 	defer func() { _ = app.Stop(context.Background()) }()
 
 	GracefulShutdown()
+	return 0
 }
 
 func applyConfigFlag(configPath string) {
@@ -123,4 +149,3 @@ func StartNetworkService(lc fx.Lifecycle, svc *network.Service) {
 		},
 	})
 }
-
