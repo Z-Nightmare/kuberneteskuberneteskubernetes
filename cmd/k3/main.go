@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -72,6 +73,7 @@ Commands:
   web                   启动 storage + web
   apply                 将 Kubernetes YAML/JSON 提交到 apiserver（最小 apply 子集）
   cluster create        创建 k3 集群配置骨架（多节点配置文件）
+  cluster clear         删除 k3 集群配置目录以及关联的容器
 
 Flags:
   --config <path>       指定配置文件路径（默认: ./.config.yaml；也支持环境变量 CONFIG_PATH）
@@ -394,6 +396,8 @@ func cmdCluster(args []string) int {
 	switch args[0] {
 	case "create":
 		return cmdClusterCreate(args[1:])
+	case "clear":
+		return cmdClusterClear(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "未知 cluster 子命令: %s\n", args[0])
 		return 2
@@ -435,6 +439,123 @@ func cmdClusterCreate(args []string) int {
 	fmt.Println("示例：启动 node-1：")
 	fmt.Printf("  CONFIG_PATH=%s go run ./cmd/k3 start\n", filepath.Join(*dir, "node-1", ".config.yaml"))
 	return 0
+}
+
+// cmdClusterClear 删除 k3 集群配置目录以及关联的容器
+func cmdClusterClear(args []string) int {
+	fs := flag.NewFlagSet("k3 cluster clear", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	dir := fs.String("dir", ".k3", "要删除的集群配置目录")
+	force := fs.Bool("force", false, "不询问确认，直接删除")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	clusterDir := strings.TrimSpace(*dir)
+	if clusterDir == "" {
+		fmt.Fprintln(os.Stderr, "--dir 不能为空")
+		return 2
+	}
+
+	// 安全检查：避免误删重要目录
+	if clusterDir == "." || clusterDir == "/" || clusterDir == ".." || strings.Contains(clusterDir, "..") {
+		fmt.Fprintf(os.Stderr, "错误：不允许删除目录 %s（安全限制）\n", clusterDir)
+		return 1
+	}
+
+	// 确认操作
+	if !*force {
+		fmt.Fprintf(os.Stderr, "警告：将删除目录 %s 及其所有内容，以及关联的 k3 容器\n", clusterDir)
+		fmt.Fprint(os.Stderr, "确认删除？(yes/no): ")
+		var answer string
+		fmt.Scanln(&answer)
+		if strings.ToLower(strings.TrimSpace(answer)) != "yes" {
+			fmt.Println("已取消")
+			return 0
+		}
+	}
+
+	// 1. 停止并删除关联容器
+	fmt.Println("正在清理关联容器...")
+	containersCleared := clearK3Containers()
+
+	// 2. 删除配置目录
+	fmt.Printf("正在删除配置目录: %s\n", clusterDir)
+	if err := os.RemoveAll(clusterDir); err != nil {
+		fmt.Fprintf(os.Stderr, "删除目录失败: %v\n", err)
+		return 1
+	}
+
+	fmt.Printf("✅ 清理完成：已删除 %d 个容器，已删除目录 %s\n", containersCleared, clusterDir)
+	return 0
+}
+
+// clearK3Containers 清理 k3 相关的 Docker 容器
+// 返回清理的容器数量
+func clearK3Containers() int {
+	// 检查 docker 是否可用
+	if _, err := exec.LookPath("docker"); err != nil {
+		fmt.Println("未找到 docker 命令，跳过容器清理")
+		return 0
+	}
+
+	// 检查 docker daemon 是否运行
+	cmd := exec.Command("docker", "info")
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Docker daemon 未运行，跳过容器清理")
+		return 0
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 获取所有容器名称（包括已停止的）
+	listCmd := exec.CommandContext(ctx, "docker", "ps", "-a", "--format", "{{.Names}}")
+	output, err := listCmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "获取容器列表失败: %v\n", err)
+		return 0
+	}
+
+	allNames := strings.Split(strings.TrimSpace(string(output)), "\n")
+	cleared := 0
+
+	// k3 相关的容器名称模式
+	// 1. 存储容器：k8s_storage_mysql_mysql, k8s_storage_etcd_etcd
+	// 2. Pod 容器：k8s_{namespace}_{pod-name}_{container-name}
+	matchedContainers := make(map[string]bool)
+
+	for _, name := range allNames {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+
+		// 匹配 k3 容器命名规则
+		if strings.HasPrefix(name, "k8s_") {
+			matchedContainers[name] = true
+		}
+	}
+
+	// 停止并删除匹配的容器
+	for name := range matchedContainers {
+		// 停止容器
+		stopCmd := exec.CommandContext(ctx, "docker", "stop", name)
+		if err := stopCmd.Run(); err != nil {
+			// 容器可能已经停止，忽略错误
+		}
+
+		// 删除容器
+		rmCmd := exec.CommandContext(ctx, "docker", "rm", name)
+		if err := rmCmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "  删除容器 %s 失败: %v\n", name, err)
+		} else {
+			fmt.Printf("  已删除容器: %s\n", name)
+			cleared++
+		}
+	}
+
+	return cleared
 }
 
 func defaultConfigYAML(port int, storageType string) string {
