@@ -7,6 +7,23 @@ log:
   level: debug                # debug / info / warn / error
   path: logs/app.log
   enable_rotation: true
+# 存储配置
+storage:
+  type: memory                # memory / mysql / etcd
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: kubernetes
+    max_open_conns: 100
+    max_idle_conns: 10
+  etcd:
+    endpoints:
+      - http://localhost:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
 # jwt 配置
 jwt:
   # jwt的过期时间（小时）
