@@ -1,0 +1,46 @@
+# cmd/k3 one 模式配置示例
+#
+# 用途：
+# - go run ./cmd/k3 run --config config-one-example.yaml
+#
+# 说明：
+# - one 模式启动：apiserver, storage, discovery, controller
+# - 适用于单节点部署或开发环境
+# - 所有功能集成在一个进程中
+
+debug: true
+
+role: one  # one 模式（单节点）
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: memory   # 单节点可以使用 memory，多节点请用 mysql/etcd
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 100
+    max_idle_conns: 10
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+jwt:
+  signing_key: secret
+
+# translate service configs
+minimum_deviation_distance: 666
+output: console
+cities: []

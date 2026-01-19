@@ -27,6 +27,7 @@ func init() {
 
 type Config struct {
 	Debug                    bool          `mapstructure:"debug"`
+	Role                     string        `mapstructure:"role"` // master/node/one
 	Gin                      GinConfig     `mapstructure:"web"`
 	Log                      LogConfig     `mapstructure:"log"`
 	JWT                      JWT           `mapstructure:"jwt"`

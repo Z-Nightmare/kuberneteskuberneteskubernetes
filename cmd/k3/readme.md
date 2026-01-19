@@ -20,9 +20,10 @@ Usage:
 
 Commands:
   start                 按顺序启动 storage -> controller -> web（单进程）
+  run                   根据配置中的 role 启动不同模式（master/node/one）
   storage               仅启动 storage（包含按需拉起 mysql/etcd 容器）
   controller            启动 storage + controller
-  web                   启动 storage + web
+  web                   仅启动 web 模块（假设 storage 已运行）
   apply                 将 Kubernetes YAML/JSON 提交到 apiserver（最小 apply 子集）
   cluster create        创建 k3 集群配置骨架（多节点配置文件）
   cluster clear         删除 k3 集群配置目录以及关联的容器
@@ -32,6 +33,128 @@ Flags:
 ```
 
 ## 命令详解
+
+### `run` - 根据角色启动不同模式
+
+根据配置文件中的 `role` 字段启动不同的模块组合。这是推荐的部署方式，支持三种角色模式。
+
+**角色模式**：
+
+- **`master`**：启动 apiserver、storage、discovery 模块
+  - 适用于控制平面节点
+  - 提供 API Server 和 Dashboard
+  - 提供服务发现功能
+  - 不运行控制器（由 node 节点运行）
+
+- **`node`**：启动 controller 模块
+  - 适用于工作节点
+  - 运行控制器管理器（Deployment、Scheduler、Runtime）
+  - 需要连接到共享的 storage（mysql/etcd）
+
+- **`one`**：启动 apiserver、storage、discovery、controller 模块
+  - 适用于单节点部署或开发环境
+  - 所有功能集成在一个进程中
+
+**使用示例**：
+
+```bash
+# 使用默认配置（role: one）
+go run ./cmd/k3 run
+
+# 指定配置文件（master 模式）
+go run ./cmd/k3 run --config master-config.yaml
+
+# 指定配置文件（node 模式）
+go run ./cmd/k3 run --config node-config.yaml
+
+# 使用环境变量指定配置
+CONFIG_PATH=master-config.yaml go run ./cmd/k3 run
+```
+
+**配置文件示例**：
+
+```yaml
+# master-config.yaml
+debug: true
+role: master  # master/node/one
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: etcd  # 多节点部署建议使用 etcd 或 mysql
+  etcd:
+    endpoints:
+      - http://localhost:2379
+    dial_timeout: 5s
+
+jwt:
+  signing_key: secret
+```
+
+```yaml
+# node-config.yaml
+debug: true
+role: node  # node 模式
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: etcd  # 必须与 master 使用相同的存储
+  etcd:
+    endpoints:
+      - http://master-node:2379  # 连接到 master 的 etcd
+    dial_timeout: 5s
+```
+
+**环境变量**（用于 discovery 模块）：
+
+- `CONSUL_ADDR`：Consul 服务器地址（默认：`localhost:8500`）
+- `CONSUL_TOKEN`：Consul ACL token（可选）
+- `SERVICE_NAME`：服务名称（默认：`k3-node`）
+- `NODE_NAME`：节点名称（默认：系统 hostname）
+
+**部署场景**：
+
+1. **单节点部署**（开发/测试）：
+   ```yaml
+   role: one
+   ```
+   所有模块运行在一个进程中。
+
+2. **多节点集群**（生产环境）：
+   - Master 节点配置：
+     ```yaml
+     role: master
+     storage:
+       type: etcd
+       etcd:
+         endpoints:
+           - http://etcd-cluster:2379
+     ```
+   - Node 节点配置：
+     ```yaml
+     role: node
+     storage:
+       type: etcd
+       etcd:
+         endpoints:
+           - http://etcd-cluster:2379  # 连接到共享的 etcd
+     ```
+
+**注意事项**：
+
+- `master` 和 `node` 模式必须使用**相同的存储后端**（mysql/etcd）才能共享资源数据
+- `node` 模式需要确保 storage 已启动并可访问
+- `discovery` 模块需要 Consul 服务运行（可通过环境变量配置）
+- 默认情况下，`discovery` 模块会注册当前节点到 Consul 并同步到 Node 列表
 
 ### `start` - 启动完整集群
 
@@ -105,23 +228,33 @@ go run ./cmd/k3 controller --config .config.yaml
 
 ### `web` - 启动 Web 模块
 
-启动 storage + web，不启动控制器。
+仅启动 web 模块，不自动拉起 storage 容器，不启动 controller。
 
 **使用场景**：
 - 仅需要 Web Dashboard 和 API Server
-- 分离部署：web 和 controller 运行在不同进程
+- 分离部署：storage、controller 和 web 运行在不同进程
+- 假设 storage 已经运行（通过 `cmd/k3 storage` 或 `cmd/storage` 启动）
 
 **使用示例**：
 
 ```bash
-go run ./cmd/k3 web --config .config.yaml
+# 终端 1：先启动 storage
+CONFIG_PATH=.k3/node-1/.config.yaml go run ./cmd/k3 storage
+
+# 终端 2：启动 web（连接到已运行的 storage）
+CONFIG_PATH=.k3/node-1/.config.yaml go run ./cmd/k3 web
 ```
 
 **功能**：
-- 启动存储后端
+- 连接到已运行的存储后端（不自动拉起容器）
 - 启动 Web 服务器：
   - Dashboard（实时资源看板）
   - API Server（Kubernetes 风格 REST API）
+
+**注意事项**：
+- 不会自动拉起 MySQL/etcd 容器（假设 storage 已运行）
+- 需要确保 storage 后端已启动并可访问
+- 如果 storage 未运行，web 服务将无法正常工作
 
 ### `apply` - 提交 Kubernetes 资源
 
@@ -287,6 +420,8 @@ k3 按以下顺序查找配置文件：
 ```yaml
 debug: true
 
+role: one  # master/node/one
+
 web:
   port: 8080
   cors: true
@@ -315,6 +450,12 @@ storage:
 jwt:
   signing_key: secret
 ```
+
+**role 配置说明**：
+
+- `master`：控制平面节点，运行 apiserver、storage、discovery
+- `node`：工作节点，运行 controller
+- `one`：单节点模式，运行所有模块（默认值）
 
 ### 存储类型说明
 
@@ -356,6 +497,15 @@ NODE_NAME=my-node-1 go run ./cmd/k3 start
 ### 场景 1：快速启动单节点集群
 
 ```bash
+# 方式 1：使用 run 命令（推荐）
+# 1. 创建配置文件，设置 role: one
+echo "role: one" >> .config.yaml
+# ... 添加其他配置
+
+# 2. 启动集群
+go run ./cmd/k3 run
+
+# 方式 2：使用 start 命令（传统方式）
 # 1. 生成配置
 go run ./cmd/k3 cluster create --dir .k3 --nodes 1 --storage mysql
 
@@ -387,15 +537,64 @@ docker ps --filter "name=k8s_default_nginx"
 
 ### 场景 3：分离部署（多进程）
 
+**方式 1：使用 run 命令（推荐）**
+
+```bash
+# 终端 1：启动 master 节点（apiserver + storage + discovery）
+go run ./cmd/k3 run --config master-config.yaml
+
+# 终端 2：启动 node 节点（controller）
+go run ./cmd/k3 run --config node-config.yaml
+```
+
+**方式 2：使用传统命令**
+
 ```bash
 # 终端 1：启动 storage + controller
 go run ./cmd/k3 controller --config .config.yaml
 
-# 终端 2：启动 storage + web
+# 终端 2：启动 web（连接到已运行的 storage）
 go run ./cmd/k3 web --config .config.yaml
 ```
 
-**注意**：分离部署时，两个进程必须使用**相同的存储配置**（mysql/etcd），才能共享资源数据。
+**注意**：分离部署时，所有进程必须使用**相同的存储配置**（mysql/etcd），才能共享资源数据。
+
+### 场景 4：多节点集群部署
+
+```bash
+# Master 节点（控制平面）
+# master-config.yaml
+role: master
+storage:
+  type: etcd
+  etcd:
+    endpoints:
+      - http://etcd-cluster:2379
+
+go run ./cmd/k3 run --config master-config.yaml
+
+# Node 节点 1（工作节点）
+# node1-config.yaml
+role: node
+storage:
+  type: etcd
+  etcd:
+    endpoints:
+      - http://etcd-cluster:2379  # 连接到共享的 etcd
+
+go run ./cmd/k3 run --config node1-config.yaml
+
+# Node 节点 2（工作节点）
+# node2-config.yaml
+role: node
+storage:
+  type: etcd
+  etcd:
+    endpoints:
+      - http://etcd-cluster:2379
+
+go run ./cmd/k3 run --config node2-config.yaml
+```
 
 ### 场景 4：批量提交资源
 

@@ -24,6 +24,7 @@ import (
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/config"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/webprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/discovery"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/service"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/apiserver"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/parser"
@@ -41,6 +42,8 @@ func main() {
 	switch os.Args[1] {
 	case "start":
 		os.Exit(cmdStartAll(os.Args[2:]))
+	case "run":
+		os.Exit(cmdRun(os.Args[2:]))
 	case "storage":
 		os.Exit(cmdStorage(os.Args[2:]))
 	case "controller":
@@ -68,9 +71,10 @@ Usage:
 
 Commands:
   start                 按顺序启动 storage -> controller -> web（单进程）
+  run                   根据配置中的 role 启动不同模式（master/node/one）
   storage               仅启动 storage（包含按需拉起 mysql/etcd 容器）
   controller            启动 storage + controller
-  web                   启动 storage + web
+  web                   仅启动 web 模块（假设 storage 已运行）
   apply                 将 Kubernetes YAML/JSON 提交到 apiserver（最小 apply 子集）
   cluster create        创建 k3 集群配置骨架（多节点配置文件）
   cluster clear         删除 k3 集群配置目录以及关联的容器
@@ -105,6 +109,134 @@ func fxApp(modules fx.Option, invoke any) *fx.App {
 		fx.WithLogger(func() fxevent.Logger { return newFxLogger() }),
 		fx.Invoke(invoke),
 	)
+}
+
+// cmdRun 根据配置中的 role 启动不同模式
+func cmdRun(args []string) int {
+	fs := flag.NewFlagSet("k3 run", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	cfgPath := commonFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	applyConfigFlag(*cfgPath)
+
+	// 读取配置以获取 role
+	cfg := config.NewFileConfig()
+	role := strings.ToLower(strings.TrimSpace(cfg.Role))
+	if role == "" {
+		role = "one" // 默认值
+	}
+
+	var modules fx.Option
+	var invokeFunc interface{}
+
+	switch role {
+	case "master":
+		// master: 启动 apiserver, storage, discovery
+		modules = fx.Options(
+			core.CoreModule,
+			fx.Provide(
+				bootstrap.ProvideDBContainerHandle,
+				bootstrap.ProvideStore,
+				func() discovery.Settings {
+					// 使用默认值或从环境变量读取
+					nodeName := os.Getenv("NODE_NAME")
+					if nodeName == "" {
+						hostname, _ := os.Hostname()
+						nodeName = hostname
+					}
+					return discovery.Settings{
+						ConsulAddress:                  getEnvOrDefault("CONSUL_ADDR", "localhost:8500"),
+						ConsulToken:                    os.Getenv("CONSUL_TOKEN"),
+						ServiceName:                    getEnvOrDefault("SERVICE_NAME", "k3-node"),
+						ServicePort:                    7946,
+						NodeName:                       nodeName,
+						RegisterSelf:                   true,
+						WatchInterval:                  15 * time.Second,
+						HealthCheckInterval:            10 * time.Second,
+						HealthCheckTimeout:             3 * time.Second,
+						DeregisterCriticalServiceAfter: 30 * time.Second,
+					}
+				},
+				discovery.NewService,
+			),
+			service.Modules,
+			api.Modules,
+			apiserver.Module,
+		)
+		invokeFunc = StartMasterMode
+
+	case "node":
+		// node: 启动 controller
+		modules = fx.Options(
+			core.CoreModule,
+			fx.Provide(
+				bootstrap.ProvideDBContainerHandle,
+				bootstrap.ProvideStore,
+			),
+			controller.Module,
+		)
+		invokeFunc = StartNodeMode
+
+	case "one":
+		// one: 启动 apiserver, storage, discovery, controller
+		modules = fx.Options(
+			core.CoreModule,
+			fx.Provide(
+				bootstrap.ProvideDBContainerHandle,
+				bootstrap.ProvideStore,
+				func() discovery.Settings {
+					// 使用默认值或从环境变量读取
+					nodeName := os.Getenv("NODE_NAME")
+					if nodeName == "" {
+						hostname, _ := os.Hostname()
+						nodeName = hostname
+					}
+					return discovery.Settings{
+						ConsulAddress:                  getEnvOrDefault("CONSUL_ADDR", "localhost:8500"),
+						ConsulToken:                    os.Getenv("CONSUL_TOKEN"),
+						ServiceName:                    getEnvOrDefault("SERVICE_NAME", "k3-node"),
+						ServicePort:                    7946,
+						NodeName:                       nodeName,
+						RegisterSelf:                   true,
+						WatchInterval:                  15 * time.Second,
+						HealthCheckInterval:            10 * time.Second,
+						HealthCheckTimeout:             3 * time.Second,
+						DeregisterCriticalServiceAfter: 30 * time.Second,
+					}
+				},
+				discovery.NewService,
+			),
+			controller.Module,
+			service.Modules,
+			api.Modules,
+			apiserver.Module,
+		)
+		invokeFunc = StartOneMode
+
+	default:
+		fmt.Fprintf(os.Stderr, "未知的 role: %s（支持: master/node/one）\n", role)
+		return 2
+	}
+
+	app := fxApp(modules, invokeFunc)
+	if err := app.Start(context.Background()); err != nil {
+		fmt.Fprintf(os.Stderr, "启动失败: %v\n", err)
+		return 1
+	}
+	defer func() { _ = app.Stop(context.Background()) }()
+
+	blockUntilSignal()
+	return 0
+}
+
+// getEnvOrDefault 获取环境变量，如果不存在则返回默认值
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // cmdStartAll 启动 storage -> controller -> web（单进程）
@@ -199,7 +331,7 @@ func cmdController(args []string) int {
 	return 0
 }
 
-// cmdWeb 启动 storage + web
+// cmdWeb 仅启动 web 模块（不自动拉起 storage 容器，不启动 controller）
 func cmdWeb(args []string) int {
 	fs := flag.NewFlagSet("k3 web", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -212,8 +344,7 @@ func cmdWeb(args []string) int {
 	modules := fx.Options(
 		core.CoreModule,
 		fx.Provide(
-			bootstrap.ProvideDBContainerHandle,
-			bootstrap.ProvideStore,
+			storage.NewStore,
 		),
 		service.Modules,
 		api.Modules,
@@ -704,7 +835,7 @@ func StartControllerOnly(
 	})
 }
 
-// StartWebOnly 启动 web（依赖 storage）。
+// StartWebOnly 启动 web 模块（仅 web，不启动 storage 容器和 controller）。
 func StartWebOnly(
 	lc fx.Lifecycle,
 	router api.Routes,
@@ -716,7 +847,7 @@ func StartWebOnly(
 		OnStart: func(ctx context.Context) error {
 			router.SetUp()
 			go func() {
-				l.Infof("正在启动Fiber服务器 http://localhost:%v/translate", cfg.Gin.Port)
+				l.Infof("正在启动 Web 服务 http://localhost:%v/ (dashboard + apiserver)", cfg.Gin.Port)
 				if err := fiber.App.Listen(fmt.Sprintf(":%v", cfg.Gin.Port)); err != nil {
 					l.Panic("无法启动服务器: ", err.Error())
 				}
@@ -728,6 +859,154 @@ func StartWebOnly(
 			defer cancel()
 			_ = shutdownCtx
 			return fiber.App.Shutdown()
+		},
+	})
+}
+
+// StartMasterMode 启动 master 模式：apiserver, storage, discovery
+func StartMasterMode(
+	lc fx.Lifecycle,
+	handle *bootstrap.DBContainerHandle,
+	store storage.Store,
+	router api.Routes,
+	cfg config.Config,
+	fiber webprovider.FiberEngine,
+	discoverySvc *discovery.Service,
+	l logprovider.Logger,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			l.Infof("Storage 已就绪 (type=%s)", cfg.Storage.Type)
+
+			l.Info("正在启动 Discovery...")
+			if err := discoverySvc.Start(ctx); err != nil {
+				return fmt.Errorf("启动 discovery 失败: %w", err)
+			}
+			l.Info("Discovery 启动完成")
+
+			l.Info("正在启动 API Server...")
+			router.SetUp()
+			go func() {
+				l.Infof("正在启动 API Server http://localhost:%v/", cfg.Gin.Port)
+				if err := fiber.App.Listen(fmt.Sprintf(":%v", cfg.Gin.Port)); err != nil {
+					l.Panic("无法启动服务器: ", err.Error())
+				}
+			}()
+			l.Info("API Server 启动完成")
+
+			_ = store
+			_ = handle
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			_ = fiber.App.Shutdown()
+			if err := discoverySvc.Stop(ctx); err != nil {
+				l.Warnf("停止 discovery 失败: %v", err)
+			}
+			if closer, ok := store.(interface{ Close() error }); ok {
+				_ = closer.Close()
+			}
+			if handle != nil && handle.Started && handle.Runtime != nil && handle.Pod != nil {
+				_ = handle.Runtime.StopContainer(context.Background(), handle.Pod)
+			}
+			return nil
+		},
+	})
+}
+
+// StartNodeMode 启动 node 模式：controller
+func StartNodeMode(
+	lc fx.Lifecycle,
+	handle *bootstrap.DBContainerHandle,
+	store storage.Store,
+	cm *controller.ControllerManager,
+	cfg config.Config,
+	l logprovider.Logger,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			l.Infof("Storage 已就绪 (type=%s)", cfg.Storage.Type)
+
+			l.Info("正在启动 Controller...")
+			if err := cm.Start(ctx); err != nil {
+				return err
+			}
+			go cm.StartNodeHeartbeat(ctx)
+			l.Info("Controller 启动完成")
+
+			_ = store
+			_ = handle
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			_ = cm.Stop(ctx)
+			if closer, ok := store.(interface{ Close() error }); ok {
+				_ = closer.Close()
+			}
+			if handle != nil && handle.Started && handle.Runtime != nil && handle.Pod != nil {
+				_ = handle.Runtime.StopContainer(context.Background(), handle.Pod)
+			}
+			return nil
+		},
+	})
+}
+
+// StartOneMode 启动 one 模式：apiserver, storage, discovery, controller
+func StartOneMode(
+	lc fx.Lifecycle,
+	handle *bootstrap.DBContainerHandle,
+	store storage.Store,
+	cm *controller.ControllerManager,
+	router api.Routes,
+	cfg config.Config,
+	fiber webprovider.FiberEngine,
+	discoverySvc *discovery.Service,
+	l logprovider.Logger,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			l.Infof("Storage 已就绪 (type=%s)", cfg.Storage.Type)
+
+			l.Info("正在启动 Discovery...")
+			if err := discoverySvc.Start(ctx); err != nil {
+				return fmt.Errorf("启动 discovery 失败: %w", err)
+			}
+			l.Info("Discovery 启动完成")
+
+			l.Info("正在启动 Controller...")
+			if err := cm.Start(ctx); err != nil {
+				return err
+			}
+			go cm.StartNodeHeartbeat(ctx)
+			l.Info("Controller 启动完成")
+
+			l.Info("正在启动 API Server...")
+			router.SetUp()
+			go func() {
+				l.Infof("正在启动 API Server http://localhost:%v/", cfg.Gin.Port)
+				if err := fiber.App.Listen(fmt.Sprintf(":%v", cfg.Gin.Port)); err != nil {
+					l.Panic("无法启动服务器: ", err.Error())
+				}
+			}()
+			l.Info("API Server 启动完成")
+
+			_ = store
+			_ = handle
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			_ = fiber.App.Shutdown()
+			_ = cm.Stop(ctx)
+			if err := discoverySvc.Stop(ctx); err != nil {
+				l.Warnf("停止 discovery 失败: %v", err)
+			}
+			if closer, ok := store.(interface{ Close() error }); ok {
+				_ = closer.Close()
+			}
+			if handle != nil && handle.Started && handle.Runtime != nil && handle.Pod != nil {
+				_ = handle.Runtime.StopContainer(context.Background(), handle.Pod)
+			}
+			return nil
 		},
 	})
 }

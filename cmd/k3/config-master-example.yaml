@@ -1,0 +1,46 @@
+# cmd/k3 master 模式配置示例
+#
+# 用途：
+# - go run ./cmd/k3 run --config config-master-example.yaml
+#
+# 说明：
+# - master 模式启动：apiserver, storage, discovery
+# - 适用于控制平面节点
+# - 需要 Consul 服务运行（用于 discovery）
+
+debug: true
+
+role: master  # master 模式
+
+web:
+  port: 8080
+  cors: true
+
+log:
+  level: debug
+  path: ""
+
+storage:
+  type: etcd  # 多节点部署建议使用 etcd 或 mysql
+  mysql:
+    host: localhost
+    port: 3306
+    user: root
+    password: password
+    database: k3
+    max_open_conns: 100
+    max_idle_conns: 10
+  etcd:
+    endpoints:
+      - http://127.0.0.1:2379
+    dial_timeout: 5s
+    username: ""
+    password: ""
+
+jwt:
+  signing_key: secret
+
+# translate service configs
+minimum_deviation_distance: 666
+output: console
+cities: []
