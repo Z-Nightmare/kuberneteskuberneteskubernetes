@@ -2,7 +2,7 @@
 
 ## cmd/k3 run 命令：根据角色启动不同模式
 
-2026-01-18
+2026-01-19
 
 - 新增 `cmd/k3 run` 命令：根据配置文件中的 `role` 字段启动不同的模块组合。
   - **master 模式**：启动 apiserver、storage、discovery 模块（适用于控制平面节点）
