@@ -1,5 +1,22 @@
 # change.md
 
+## cmd/k3 run 命令：根据角色启动不同模式
+
+2026-01-18
+
+- 新增 `cmd/k3 run` 命令：根据配置文件中的 `role` 字段启动不同的模块组合。
+  - **master 模式**：启动 apiserver、storage、discovery 模块（适用于控制平面节点）
+  - **node 模式**：启动 controller 模块（适用于工作节点）
+  - **one 模式**：启动 apiserver、storage、discovery、controller 模块（适用于单节点部署）
+- 在 `internal/core/config/config.go` 中添加 `Role` 字段，支持从配置文件读取角色配置。
+- 更新 `cmd/k3/config-example.yaml`：添加 `role` 配置示例。
+- 新增三个配置示例文件：
+  - `cmd/k3/config-master-example.yaml` - master 模式配置示例
+  - `cmd/k3/config-node-example.yaml` - node 模式配置示例
+  - `cmd/k3/config-one-example.yaml` - one 模式配置示例
+- 更新 `cmd/k3/readme.md`：添加 `run` 命令的详细说明，包括使用示例、配置说明、部署场景和注意事项。
+- discovery 模块配置支持通过环境变量设置（`CONSUL_ADDR`、`CONSUL_TOKEN`、`SERVICE_NAME`、`NODE_NAME`）。
+
 ## cmd/network export 子命令功能增强
 
 2026-01-18
