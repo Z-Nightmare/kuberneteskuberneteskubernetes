@@ -146,6 +146,7 @@ func cmdRun(args []string) int {
 						hostname, _ := os.Hostname()
 						nodeName = hostname
 					}
+					autoStartConsul := getEnvOrDefault("AUTO_START_CONSUL", "true") == "true"
 					return discovery.Settings{
 						ConsulAddress:                  getEnvOrDefault("CONSUL_ADDR", "localhost:8500"),
 						ConsulToken:                    os.Getenv("CONSUL_TOKEN"),
@@ -157,6 +158,7 @@ func cmdRun(args []string) int {
 						HealthCheckInterval:            10 * time.Second,
 						HealthCheckTimeout:             3 * time.Second,
 						DeregisterCriticalServiceAfter: 30 * time.Second,
+						AutoStartConsul:                 autoStartConsul,
 					}
 				},
 				discovery.NewService,
@@ -193,6 +195,7 @@ func cmdRun(args []string) int {
 						hostname, _ := os.Hostname()
 						nodeName = hostname
 					}
+					autoStartConsul := getEnvOrDefault("AUTO_START_CONSUL", "true") == "true"
 					return discovery.Settings{
 						ConsulAddress:                  getEnvOrDefault("CONSUL_ADDR", "localhost:8500"),
 						ConsulToken:                    os.Getenv("CONSUL_TOKEN"),
@@ -204,6 +207,7 @@ func cmdRun(args []string) int {
 						HealthCheckInterval:            10 * time.Second,
 						HealthCheckTimeout:             3 * time.Second,
 						DeregisterCriticalServiceAfter: 30 * time.Second,
+						AutoStartConsul:                 autoStartConsul,
 					}
 				},
 				discovery.NewService,

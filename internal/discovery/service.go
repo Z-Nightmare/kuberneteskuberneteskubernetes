@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/core/logprovider"
+	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/internal/controller"
 	"github.com/Z-Nightmare/kuberneteskuberneteskubernetes/pkg/storage"
 	"github.com/hashicorp/consul/api"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,15 @@ type Settings struct {
 	RegisterSelf bool
 	// WatchInterval 从 Consul 发现服务并同步到 store 的间隔
 	WatchInterval time.Duration
+	// AutoStartConsul 如果 Consul 不可用，是否自动启动 Consul 容器（仅当 ConsulAddress 指向 localhost 时生效）
+	AutoStartConsul bool
+}
+
+// ConsulContainerHandle 记录由本进程"自动拉起"的 Consul 容器信息
+type ConsulContainerHandle struct {
+	Runtime controller.ContainerRuntime
+	Pod     *corev1.Pod
+	Started bool // 是否由本进程拉起
 }
 
 // Service 服务发现服务
@@ -62,6 +72,9 @@ type Service struct {
 	serviceID string
 
 	httpServer *http.Server
+
+	// consulContainer 如果 Consul 容器由本进程启动，记录容器信息
+	consulContainer *ConsulContainerHandle
 }
 
 // NewService 创建服务发现服务
@@ -121,6 +134,13 @@ func (s *Service) Start(ctx context.Context) error {
 	bgCtx, cancel := context.WithCancel(context.Background())
 	s.cancelBg = cancel
 
+	// 如果启用自动启动 Consul，确保 Consul 容器运行
+	if s.settings.AutoStartConsul {
+		if err := s.ensureConsulRunning(ctx); err != nil {
+			s.logger.Warnf("自动启动 Consul 容器失败: %v，将继续尝试连接现有 Consul", err)
+		}
+	}
+
 	// 启动健康检查 HTTP 服务器
 	if err := s.startHealthServer(); err != nil {
 		return fmt.Errorf("启动健康检查服务器失败: %w", err)
@@ -165,6 +185,17 @@ func (s *Service) Stop(ctx context.Context) error {
 	// 从 Consul 注销服务
 	if err := s.deregisterService(ctx); err != nil {
 		s.logger.Warnf("从 Consul 注销服务失败: %v", err)
+	}
+
+	// 如果 Consul 容器是由本进程启动的，停止它
+	if s.consulContainer != nil && s.consulContainer.Started {
+		if s.consulContainer.Runtime != nil && s.consulContainer.Pod != nil {
+			if err := s.consulContainer.Runtime.StopContainer(ctx, s.consulContainer.Pod); err != nil {
+				s.logger.Warnf("停止 Consul 容器失败: %v", err)
+			} else {
+				s.logger.Infof("已停止 Consul 容器: %s", s.consulContainer.Pod.Name)
+			}
+		}
 	}
 
 	s.logger.Info("discovery: 已停止")
@@ -538,4 +569,169 @@ func defaultNodeName(logger logprovider.Logger) string {
 		return "node-1"
 	}
 	return hostname
+}
+
+// isLocalHost 判断 host 是否为本机回环地址
+func isLocalHost(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+	return h == "localhost" || h == "127.0.0.1" || h == "::1" || h == ""
+}
+
+// parseConsulAddress 解析 Consul 地址，返回 host 和 port
+func parseConsulAddress(addr string) (host string, port int) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return "localhost", 8500
+	}
+
+	// 处理格式：host:port
+	parts := strings.Split(addr, ":")
+	if len(parts) == 2 {
+		host = parts[0]
+		if p, err := strconv.Atoi(parts[1]); err == nil {
+			port = p
+		} else {
+			port = 8500
+		}
+	} else {
+		host = addr
+		port = 8500
+	}
+
+	if host == "" {
+		host = "localhost"
+	}
+	if port == 0 {
+		port = 8500
+	}
+
+	return host, port
+}
+
+// buildConsulPod 构造用于拉起 Consul 容器的 Pod 描述
+func buildConsulPod(consulAddress string) *corev1.Pod {
+	_, port := parseConsulAddress(consulAddress)
+
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "discovery",
+			Name:      "consul",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "consul",
+					Image: "consul:1.17",
+					Args: []string{
+						"agent",
+						"-dev",
+						"-client", "0.0.0.0",
+						"-ui",
+					},
+					Ports: []corev1.ContainerPort{
+						{
+							ContainerPort: 8500,
+							HostPort:      int32(port),
+							Name:          "http",
+							Protocol:      corev1.ProtocolTCP,
+						},
+						{
+							ContainerPort: 8600,
+							HostPort:      8600,
+							Name:          "dns",
+							Protocol:      corev1.ProtocolUDP,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// ensureConsulRunning 确保 Consul 容器运行
+// 仅当 ConsulAddress 指向 localhost 且 AutoStartConsul 为 true 时才会启动容器
+func (s *Service) ensureConsulRunning(ctx context.Context) error {
+	consulHost, port := parseConsulAddress(s.settings.ConsulAddress)
+
+	// 安全检查：仅当 Consul 地址指向本机时才自动启动容器
+	if !isLocalHost(consulHost) {
+		s.logger.Debugf("Consul 地址 %s 不是本机地址，跳过自动启动容器", consulHost)
+		return nil
+	}
+
+	// 检查 Consul 是否已经可用
+	readyAddr := net.JoinHostPort(consulHost, strconv.Itoa(port))
+	if s.checkConsulAvailable(readyAddr) {
+		s.logger.Infof("Consul 已在运行: %s", readyAddr)
+		return nil
+	}
+
+	// 检测容器运行时
+	detector := controller.NewRuntimeDetector(s.logger)
+	runtime, err := detector.DetectRuntime()
+	if err != nil {
+		return fmt.Errorf("未检测到可用容器运行时: %w", err)
+	}
+
+	// 构建 Consul Pod
+	pod := buildConsulPod(s.settings.ConsulAddress)
+
+	// 检查容器是否已在运行
+	status, _ := runtime.GetContainerStatus(ctx, pod)
+	if status.Running {
+		s.logger.Infof("检测到 Consul 容器已在运行 (runtime=%s, status=%s)，跳过拉起", runtime.Name(), status.Status)
+		s.consulContainer = &ConsulContainerHandle{
+			Runtime: runtime,
+			Pod:     pod,
+			Started: false,
+		}
+		return nil
+	}
+
+	// 清理同名旧容器
+	_ = runtime.StopContainer(ctx, pod)
+
+	s.logger.Infof("准备通过 %s 拉起 Consul 容器...", runtime.Name())
+	if err := runtime.StartContainer(ctx, pod); err != nil {
+		return fmt.Errorf("启动 Consul 容器失败: %w", err)
+	}
+
+	// 等待 Consul 就绪
+	if err := s.waitForConsul(readyAddr, 60*time.Second); err != nil {
+		_ = runtime.StopContainer(ctx, pod)
+		return fmt.Errorf("等待 Consul 就绪超时: %w", err)
+	}
+
+	s.logger.Infof("Consul 容器已就绪: %s", readyAddr)
+	s.consulContainer = &ConsulContainerHandle{
+		Runtime: runtime,
+		Pod:     pod,
+		Started: true,
+	}
+
+	return nil
+}
+
+// checkConsulAvailable 检查 Consul 是否可用
+func (s *Service) checkConsulAvailable(addr string) bool {
+	client := &http.Client{Timeout: 2 * time.Second}
+	url := fmt.Sprintf("http://%s/v1/status/leader", addr)
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+// waitForConsul 等待 Consul 就绪
+func (s *Service) waitForConsul(addr string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if s.checkConsulAvailable(addr) {
+			return nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("等待 Consul 就绪超时: %s", addr)
 }
