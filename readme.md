@@ -50,4 +50,6 @@ go run ./cmd/k3 cluster create --dir .k3 --nodes 3 --web-port 8080 --storage mem
 CONFIG_PATH=.k3/node-1/.config.yaml go run ./cmd/k3 start
 ```
 
+## TODO
 
+动态路由注册与控制器解耦。
