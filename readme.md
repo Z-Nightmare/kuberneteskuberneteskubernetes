@@ -4,7 +4,7 @@
 
 
 KubernetesKubernetesKubernetes（简称k3） 是一个简化的 kubernetes 集群项目。
-把 kubernetes 的架构简化为 apiserver -- storage + controller -- storage 的形式，以一种兼容 kubernetes yaml 的形式，直接在单机/集群上面运行简化版本的 kubernetes。
+把 kubernetes 的架构简化为 apiserver -- controller -- storage 的形式，以一种兼容 kubernetes yaml 的形式，直接在单机/集群上面运行简化版本的 kubernetes。
 
 按照我最终的设计理念，所有的组件都可以被替换，理想架构是单一组件的失败不会影响业务的整体运行。
 
